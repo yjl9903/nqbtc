@@ -32,6 +32,8 @@ importers:
 
   packages/core: {}
 
+  packages/nqbt: {}
+
 packages:
 
   '@babel/code-frame@7.27.1':
