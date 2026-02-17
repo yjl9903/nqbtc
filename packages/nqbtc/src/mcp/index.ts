@@ -6,6 +6,7 @@ import type { QBittorrent } from '@nqbt/core';
 import { version } from '../../package.json';
 
 import { registerQbittorrentTools } from './tool.js';
+import { registerQbittorrentResources } from './resource.js';
 
 export interface CreateQbittorrentMcpServerOptions {}
 
@@ -18,7 +19,7 @@ export function createQbittorrentMcpServer(
       name: 'nqbtc',
       title: 'nqbtc qBittorrent MCP Server',
       description:
-        'qBittorrent is the underlying BitTorrent client that downloads and seeds data. nqbtc MCP server is a control bridge on top of qBittorrent WebUI API: models call qbittorrent.* tools exposed by this server, and the server queries or mutates qBittorrent state (torrents, trackers, categories, tags, limits, and preferences).',
+        'qBittorrent is the underlying BitTorrent client that downloads and seeds data. nqbtc MCP server is a control bridge on top of qBittorrent WebUI API: models call qbittorrent.* tools and read qbittorrent://* resources exposed by this server to query or mutate qBittorrent state (torrents, trackers, categories, tags, limits, and preferences).',
       version
     },
     {
@@ -27,6 +28,7 @@ export function createQbittorrentMcpServer(
     }
   );
 
+  registerQbittorrentResources(server, qbittorrent);
   registerQbittorrentTools(server, qbittorrent);
 
   return server;
