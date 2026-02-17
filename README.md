@@ -34,7 +34,7 @@ Run qBittorrent MCP server.
 }
 ```
 
-You can also config `username` and `password` like the following command.
+You can also config username and password of WebUI with `--username=xxx` and `--password=yyy` options. Add these options your MCP command args.
 
 ```bash
 npx nqbtc mcp --base-url=http://localhost:9091/api/v2 --username=xxx --password=yyy
