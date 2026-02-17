@@ -1,6 +1,6 @@
 import { breadc } from 'breadc';
 
-import { QBittorrent } from '@nqbt/core';
+import { QBittorrent } from 'nqbt';
 
 import { version, description } from '../package.json';
 

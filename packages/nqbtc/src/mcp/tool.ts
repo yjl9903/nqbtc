@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { z } from 'zod';
 
-import type { QBittorrent } from '@nqbt/core';
+import type { QBittorrent, QBittorrentLogPersister } from 'nqbt';
 
 import {
   addNewCategoryInputSchema,
@@ -40,7 +40,8 @@ import {
   tagsInputSchema,
   torrentLimitInputSchema
 } from './schema.js';
-import { formatResultText } from './utils.js';
+import type { McpErrorPayload } from './utils.js';
+import { formatResultText, runWithMcpErrorPayload } from './utils.js';
 
 function getToolResult(result: unknown) {
   return {
@@ -56,38 +57,73 @@ function getToolResult(result: unknown) {
   };
 }
 
-function registerNoArgsTool(
-  server: McpServer,
-  name: string,
-  description: string,
-  handler: () => Promise<unknown>
-): void {
-  server.registerTool(name, { description }, async () => {
-    const result = await handler();
-    return getToolResult(result);
-  });
+function getToolErrorResult(payload: McpErrorPayload) {
+  return {
+    isError: true,
+    content: [
+      {
+        type: 'text' as const,
+        text: formatResultText(payload)
+      }
+    ],
+    structuredContent: payload
+  };
 }
 
-function registerToolWithArgs<TSchema extends z.ZodTypeAny>(
-  server: McpServer,
-  name: string,
-  description: string,
-  inputSchema: TSchema,
-  handler: (args: z.infer<TSchema>) => Promise<unknown>
-): void {
-  (server.registerTool as (...args: unknown[]) => unknown)(
-    name,
-    { description, inputSchema },
-    async (args: unknown) => {
-      const result = await handler(args as z.infer<TSchema>);
-      return getToolResult(result);
-    }
-  );
+function createToolRegistrars(server: McpServer, logger: QBittorrentLogPersister) {
+  function registerNoArgsTool(
+    name: string,
+    description: string,
+    handler: () => Promise<unknown>
+  ): void {
+    server.registerTool(name, { description }, async () => {
+      const execution = await runWithMcpErrorPayload(logger, handler);
+      if (execution.ok) {
+        const result = execution.data;
+        return getToolResult(result);
+      }
+
+      return getToolErrorResult(execution.error);
+    });
+  }
+
+  function registerToolWithArgs<TSchema extends z.ZodTypeAny>(
+    name: string,
+    description: string,
+    inputSchema: TSchema,
+    handler: (args: z.infer<TSchema>) => Promise<unknown>
+  ): void {
+    (server.registerTool as (...args: unknown[]) => unknown)(
+      name,
+      { description, inputSchema },
+      async (args: unknown) => {
+        const execution = await runWithMcpErrorPayload(logger, async () => {
+          return handler(args as z.infer<TSchema>);
+        });
+        if (execution.ok) {
+          const result = execution.data;
+          return getToolResult(result);
+        }
+
+        return getToolErrorResult(execution.error);
+      }
+    );
+  }
+
+  return {
+    registerNoArgsTool,
+    registerToolWithArgs
+  };
 }
 
-export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittorrent): void {
+export function registerQbittorrentTools(
+  server: McpServer,
+  qbittorrent: QBittorrent,
+  logger: QBittorrentLogPersister
+): void {
+  const { registerNoArgsTool, registerToolWithArgs } = createToolRegistrars(server, logger);
+
   registerNoArgsTool(
-    server,
     'get_application_version',
     'Read-only. Get qBittorrent application version string from /app/version.',
     async () => {
@@ -96,7 +132,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerNoArgsTool(
-    server,
     'get_api_version',
     'Read-only. Get qBittorrent WebUI API version from /app/webapiVersion.',
     async () => {
@@ -105,7 +140,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerNoArgsTool(
-    server,
     'get_build_info',
     'Read-only. Get qBittorrent build/runtime info (Qt, libtorrent, OpenSSL, etc.).',
     async () => {
@@ -114,7 +148,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerNoArgsTool(
-    server,
     'get_application_preferences',
     'Read-only. Get full qBittorrent preferences object.',
     async () => {
@@ -123,7 +156,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'set_application_preferences',
     'Mutating. Update qBittorrent preferences with provided partial preferences object.',
     setApplicationPreferencesInputSchema,
@@ -133,7 +165,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerNoArgsTool(
-    server,
     'get_default_save_path',
     'Read-only. Get qBittorrent default save path.',
     async () => {
@@ -142,7 +173,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerNoArgsTool(
-    server,
     'get_cookies',
     'Read-only. Get qBittorrent WebUI HTTP cookies list.',
     async () => {
@@ -151,7 +181,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'set_cookies',
     'Mutating. Upsert qBittorrent cookies used by WebUI HTTP requests.',
     setCookiesInputSchema,
@@ -161,7 +190,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'get_log',
     'Read-only. Get qBittorrent main log entries. lastKnownId is an incremental cursor (returns entries with id > lastKnownId).',
     getLogInputSchema,
@@ -171,7 +199,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'get_peer_log',
     'Read-only. Get peer-related log entries. lastKnownId is an incremental cursor (returns entries with id > lastKnownId).',
     getPeerLogInputSchema,
@@ -181,7 +208,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'get_main_data',
     'Read-only. Get global sync snapshot/delta from /sync/maindata. Use rid for incremental polling.',
     getMainDataInputSchema,
@@ -191,7 +217,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'get_torrent_peers_data',
     'Read-only. Get peer list and peer delta for one torrent (hash + optional rid).',
     getTorrentPeersDataInputSchema,
@@ -201,7 +226,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerNoArgsTool(
-    server,
     'get_global_transfer_info',
     'Read-only. Get global transfer state (rates, totals, limits, connection status).',
     async () => {
@@ -210,7 +234,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerNoArgsTool(
-    server,
     'get_alternative_speed_limits_state',
     'Read-only. Get whether alternative speed limits mode is enabled.',
     async () => {
@@ -219,7 +242,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerNoArgsTool(
-    server,
     'toggle_alternative_speed_limits',
     'Mutating. Toggle alternative speed limits mode.',
     async () => {
@@ -228,7 +250,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerNoArgsTool(
-    server,
     'get_global_download_limit',
     'Read-only. Get global download speed limit in bytes/second (0 means unlimited).',
     async () => {
@@ -237,7 +258,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'set_global_download_limit',
     'Mutating. Set global download speed limit in bytes/second (0 means unlimited).',
     globalLimitInputSchema,
@@ -247,7 +267,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerNoArgsTool(
-    server,
     'get_global_upload_limit',
     'Read-only. Get global upload speed limit in bytes/second (0 means unlimited).',
     async () => {
@@ -256,7 +275,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'set_global_upload_limit',
     'Mutating. Set global upload speed limit in bytes/second (0 means unlimited).',
     globalLimitInputSchema,
@@ -266,7 +284,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'ban_peers',
     'Mutating. Ban one or more peers globally by IP.',
     banPeersInputSchema,
@@ -276,7 +293,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'get_torrent_list',
     'Read-only. List torrents with optional filters/sorting/pagination.',
     getTorrentListInputSchema,
@@ -286,7 +302,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'get_torrent_generic_properties',
     'Read-only. Get detailed generic properties for one torrent.',
     hashInputSchema,
@@ -296,7 +311,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'get_torrent_trackers',
     'Read-only. Get trackers for one torrent.',
     hashInputSchema,
@@ -306,7 +320,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'get_torrent_web_seeds',
     'Read-only. Get web seeds for one torrent.',
     hashInputSchema,
@@ -316,7 +329,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'get_torrent_contents',
     'Read-only. Get file list for one torrent.',
     hashInputSchema,
@@ -326,7 +338,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'get_torrent_pieces_states',
     'Read-only. Get piece state array for one torrent.',
     hashInputSchema,
@@ -336,7 +347,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'get_torrent_pieces_hashes',
     'Read-only. Get piece hash array for one torrent.',
     hashInputSchema,
@@ -346,7 +356,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'stop_torrents',
     'Mutating. Stop selected torrents (supports one hash, multiple hashes, or "all").',
     hashesInputSchema,
@@ -356,7 +365,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'start_torrents',
     'Mutating. Start selected torrents (supports one hash, multiple hashes, or "all").',
     hashesInputSchema,
@@ -366,7 +374,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'pause_torrents',
     'Mutating. Pause selected torrents (alias of stop behavior for compatibility).',
     hashesInputSchema,
@@ -376,7 +383,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'resume_torrents',
     'Mutating. Resume selected torrents (alias of start behavior for compatibility).',
     hashesInputSchema,
@@ -386,7 +392,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'delete_torrents',
     'Mutating and high-risk. Delete selected torrents, optionally including downloaded files.',
     deleteTorrentsInputSchema,
@@ -396,7 +401,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'recheck_torrents',
     'Mutating. Force recheck selected torrents.',
     hashesInputSchema,
@@ -406,7 +410,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'reannounce_torrents',
     'Mutating. Reannounce selected torrents to trackers.',
     hashesInputSchema,
@@ -416,7 +419,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'edit_trackers',
     'Mutating. Replace one tracker URL on a torrent.',
     editTrackersInputSchema,
@@ -426,7 +428,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'remove_trackers',
     'Mutating. Remove tracker URL(s) from a torrent.',
     removeTrackersInputSchema,
@@ -436,7 +437,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'add_new_torrent',
     'Mutating. Add a torrent from raw bytes. "torrent" accepts base64 string or byte array. For reliable category/tag assignment, create category/tag first.',
     addNewTorrentInputSchema,
@@ -451,7 +451,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'add_new_magnet',
     'Mutating. Add one or more torrents by magnet URL(s). For reliable category/tag assignment, create category/tag first.',
     addNewMagnetInputSchema,
@@ -461,7 +460,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'add_trackers_to_torrent',
     'Mutating. Add tracker URL(s) to a torrent.',
     addTrackersToTorrentInputSchema,
@@ -471,7 +469,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'add_peers',
     'Mutating. Add peer endpoint(s) (typically ip:port) to a torrent.',
     addPeersInputSchema,
@@ -481,7 +478,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'set_torrent_share_limits',
     'Mutating. Set share ratio/time limits for selected torrents.',
     setTorrentShareLimitsInputSchema,
@@ -495,7 +491,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'increase_torrent_priority',
     'Mutating. Increase queue priority by one step for selected torrents.',
     hashesInputSchema,
@@ -505,7 +500,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'decrease_torrent_priority',
     'Mutating. Decrease queue priority by one step for selected torrents.',
     hashesInputSchema,
@@ -515,7 +509,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'maximal_torrent_priority',
     'Mutating. Move selected torrents to top queue priority.',
     hashesInputSchema,
@@ -525,7 +518,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'minimal_torrent_priority',
     'Mutating. Move selected torrents to bottom queue priority.',
     hashesInputSchema,
@@ -535,7 +527,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'set_file_priority',
     'Mutating. Set priority for one or more files inside a torrent.',
     setFilePriorityInputSchema,
@@ -545,7 +536,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'get_torrent_download_limit',
     'Read-only. Get per-torrent download speed limit(s) in bytes/second.',
     torrentLimitInputSchema,
@@ -555,7 +545,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'set_torrent_download_limit',
     'Mutating. Set per-torrent download speed limit in bytes/second (0 means unlimited).',
     setTorrentLimitInputSchema,
@@ -565,7 +554,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'get_torrent_upload_limit',
     'Read-only. Get per-torrent upload speed limit(s) in bytes/second.',
     torrentLimitInputSchema,
@@ -575,7 +563,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'set_torrent_upload_limit',
     'Mutating. Set per-torrent upload speed limit in bytes/second (0 means unlimited).',
     setTorrentLimitInputSchema,
@@ -585,7 +572,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'set_torrent_location',
     'Mutating. Move selected torrents to a new save path.',
     setTorrentLocationInputSchema,
@@ -595,7 +581,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'set_torrent_name',
     'Mutating. Rename a torrent display name.',
     setTorrentNameInputSchema,
@@ -605,7 +590,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'set_torrent_category',
     'Mutating. Set or clear category for selected torrents.',
     setTorrentCategoryInputSchema,
@@ -615,7 +599,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'set_automatic_torrent_management',
     'Mutating. Enable/disable automatic torrent management for selected torrents.',
     setAutomaticTorrentManagementInputSchema,
@@ -625,7 +608,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'toggle_sequential_download',
     'Mutating. Toggle sequential download mode for selected torrents.',
     hashesInputSchema,
@@ -635,7 +617,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'set_first_last_piece_priority',
     'Mutating. Toggle first/last piece priority for selected torrents.',
     hashesInputSchema,
@@ -645,7 +626,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'set_force_start',
     'Mutating. Set force-start state for selected torrents.',
     setTorrentBooleanStateInputSchema,
@@ -655,7 +635,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'set_super_seeding',
     'Mutating. Set super-seeding state for selected torrents.',
     setTorrentBooleanStateInputSchema,
@@ -665,7 +644,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerNoArgsTool(
-    server,
     'get_all_categories',
     'Read-only. Get all categories with their configured save paths.',
     async () => {
@@ -674,7 +652,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'add_new_category',
     'Mutating. Create a category (optionally with default save path).',
     addNewCategoryInputSchema,
@@ -684,7 +661,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'edit_category',
     'Mutating. Update a category default save path.',
     editCategoryInputSchema,
@@ -694,7 +670,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'remove_categories',
     'Mutating. Remove one or more categories.',
     removeCategoriesInputSchema,
@@ -704,7 +679,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'add_torrent_tags',
     'Mutating. Add tag(s) to selected torrents.',
     addTorrentTagsInputSchema,
@@ -714,7 +688,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'remove_torrent_tags',
     'Mutating. Remove tag(s) from selected torrents. Omit tags to remove all tags.',
     removeTorrentTagsInputSchema,
@@ -723,12 +696,11 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
     }
   );
 
-  registerNoArgsTool(server, 'get_all_tags', 'Read-only. Get all existing tags.', async () => {
+  registerNoArgsTool('get_all_tags', 'Read-only. Get all existing tags.', async () => {
     return qbittorrent.getAllTags();
   });
 
   registerToolWithArgs(
-    server,
     'create_tags',
     'Mutating. Create one or more tags.',
     tagsInputSchema,
@@ -738,7 +710,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'delete_tags',
     'Mutating. Delete one or more tags.',
     tagsInputSchema,
@@ -748,7 +719,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'rename_file',
     'Mutating. Rename a file path inside a torrent.',
     renamePathInputSchema,
@@ -758,7 +728,6 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
   );
 
   registerToolWithArgs(
-    server,
     'rename_folder',
     'Mutating. Rename a folder path inside a torrent.',
     renamePathInputSchema,

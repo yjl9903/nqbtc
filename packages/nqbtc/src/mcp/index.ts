@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-import type { QBittorrent } from '@nqbt/core';
+import { QBittorrentLogPersister, type QBittorrent } from 'nqbt';
 
 import { version } from '../../package.json';
 
@@ -35,8 +35,10 @@ export function createQbittorrentMcpServer(
     }
   );
 
-  registerQbittorrentResources(server, qbittorrent);
-  registerQbittorrentTools(server, qbittorrent);
+  const logger = new QBittorrentLogPersister(qbittorrent);
+
+  registerQbittorrentTools(server, qbittorrent, logger);
+  registerQbittorrentResources(server, qbittorrent, logger);
 
   return server;
 }

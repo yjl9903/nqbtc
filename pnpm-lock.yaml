@@ -49,12 +49,12 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 1.26.0
         version: 1.26.0(zod@4.3.6)
-      '@nqbt/core':
-        specifier: workspace:*
-        version: link:../core
       breadc:
         specifier: 1.0.0-beta.10
         version: 1.0.0-beta.10
+      nqbt:
+        specifier: workspace:*
+        version: link:../nqbt
       zod:
         specifier: 4.3.6
         version: 4.3.6

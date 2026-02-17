@@ -1,8 +1,8 @@
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 
-import type { QBittorrent } from '@nqbt/core';
+import type { QBittorrent, QBittorrentLogPersister } from 'nqbt';
 
-import { JSON_MIME_TYPE, toJsonResource } from './utils.js';
+import { JSON_MIME_TYPE, runWithMcpErrorPayload, toJsonResource } from './utils.js';
 
 function normalizeVariable(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) {
@@ -20,7 +20,20 @@ function decodeTemplateVariable(value: string): string {
   }
 }
 
-export function registerQbittorrentResources(server: McpServer, qbittorrent: QBittorrent): void {
+export function registerQbittorrentResources(
+  server: McpServer,
+  qbittorrent: QBittorrent,
+  logger: QBittorrentLogPersister
+): void {
+  const withResourceErrorHandling = async (uri: URL, handler: () => Promise<unknown>) => {
+    const execution = await runWithMcpErrorPayload(logger, handler);
+    if (execution.ok) {
+      return toJsonResource(uri.toString(), execution.data);
+    }
+
+    return toJsonResource(uri.toString(), execution.error);
+  };
+
   server.registerResource(
     'qbittorrent.torrents',
     'qbittorrent://torrents',
@@ -30,8 +43,9 @@ export function registerQbittorrentResources(server: McpServer, qbittorrent: QBi
       mimeType: JSON_MIME_TYPE
     },
     async (uri) => {
-      const torrents = await qbittorrent.getTorrentList();
-      return toJsonResource(uri.toString(), torrents);
+      return withResourceErrorHandling(uri, async () => {
+        return qbittorrent.getTorrentList();
+      });
     }
   );
 
@@ -65,24 +79,26 @@ export function registerQbittorrentResources(server: McpServer, qbittorrent: QBi
       mimeType: JSON_MIME_TYPE
     },
     async (uri, variables) => {
-      const hash = normalizeVariable(variables.hash);
-      if (!hash) {
-        throw new Error('Missing required template variable: hash');
-      }
+      return withResourceErrorHandling(uri, async () => {
+        const hash = normalizeVariable(variables.hash);
+        if (!hash) {
+          throw new Error('Missing required template variable: hash');
+        }
 
-      const [list, properties, trackers, files] = await Promise.all([
-        qbittorrent.getTorrentList({ hashes: hash }),
-        qbittorrent.getTorrentGenericProperties(hash),
-        qbittorrent.getTorrentTrackers(hash),
-        qbittorrent.getTorrentContents(hash)
-      ]);
+        const [list, properties, trackers, files] = await Promise.all([
+          qbittorrent.getTorrentList({ hashes: hash }),
+          qbittorrent.getTorrentGenericProperties(hash),
+          qbittorrent.getTorrentTrackers(hash),
+          qbittorrent.getTorrentContents(hash)
+        ]);
 
-      return toJsonResource(uri.toString(), {
-        hash,
-        torrent: list[0] ?? null,
-        properties,
-        trackers,
-        files
+        return {
+          hash,
+          torrent: list[0] ?? null,
+          properties,
+          trackers,
+          files
+        };
       });
     }
   );
@@ -96,8 +112,9 @@ export function registerQbittorrentResources(server: McpServer, qbittorrent: QBi
       mimeType: JSON_MIME_TYPE
     },
     async (uri) => {
-      const categories = await qbittorrent.getAllCategories();
-      return toJsonResource(uri.toString(), categories);
+      return withResourceErrorHandling(uri, async () => {
+        return qbittorrent.getAllCategories();
+      });
     }
   );
 
@@ -131,21 +148,23 @@ export function registerQbittorrentResources(server: McpServer, qbittorrent: QBi
       mimeType: JSON_MIME_TYPE
     },
     async (uri, variables) => {
-      const rawName = normalizeVariable(variables.name);
-      if (!rawName) {
-        throw new Error('Missing required template variable: name');
-      }
+      return withResourceErrorHandling(uri, async () => {
+        const rawName = normalizeVariable(variables.name);
+        if (!rawName) {
+          throw new Error('Missing required template variable: name');
+        }
 
-      const name = decodeTemplateVariable(rawName);
-      const [categories, torrents] = await Promise.all([
-        qbittorrent.getAllCategories(),
-        qbittorrent.getTorrentList({ category: name })
-      ]);
+        const name = decodeTemplateVariable(rawName);
+        const [categories, torrents] = await Promise.all([
+          qbittorrent.getAllCategories(),
+          qbittorrent.getTorrentList({ category: name })
+        ]);
 
-      return toJsonResource(uri.toString(), {
-        name,
-        category: categories[name] ?? null,
-        torrents
+        return {
+          name,
+          category: categories[name] ?? null,
+          torrents
+        };
       });
     }
   );
@@ -159,8 +178,9 @@ export function registerQbittorrentResources(server: McpServer, qbittorrent: QBi
       mimeType: JSON_MIME_TYPE
     },
     async (uri) => {
-      const tags = await qbittorrent.getAllTags();
-      return toJsonResource(uri.toString(), tags);
+      return withResourceErrorHandling(uri, async () => {
+        return qbittorrent.getAllTags();
+      });
     }
   );
 
@@ -192,21 +212,23 @@ export function registerQbittorrentResources(server: McpServer, qbittorrent: QBi
       mimeType: JSON_MIME_TYPE
     },
     async (uri, variables) => {
-      const rawName = normalizeVariable(variables.name);
-      if (!rawName) {
-        throw new Error('Missing required template variable: name');
-      }
+      return withResourceErrorHandling(uri, async () => {
+        const rawName = normalizeVariable(variables.name);
+        if (!rawName) {
+          throw new Error('Missing required template variable: name');
+        }
 
-      const name = decodeTemplateVariable(rawName);
-      const [tags, torrents] = await Promise.all([
-        qbittorrent.getAllTags(),
-        qbittorrent.getTorrentList({ tag: name })
-      ]);
+        const name = decodeTemplateVariable(rawName);
+        const [tags, torrents] = await Promise.all([
+          qbittorrent.getAllTags(),
+          qbittorrent.getTorrentList({ tag: name })
+        ]);
 
-      return toJsonResource(uri.toString(), {
-        name,
-        exists: tags.includes(name),
-        torrents
+        return {
+          name,
+          exists: tags.includes(name),
+          torrents
+        };
       });
     }
   );
