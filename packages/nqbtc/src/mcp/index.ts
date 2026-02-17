@@ -31,7 +31,7 @@ export function createQbittorrentMcpServer(
     },
     {
       instructions:
-        'Safety policy: default to read-only operations. Do not run destructive or state-changing actions unless the user explicitly asks for that exact action. Treat delete, remove, rename, stop/pause, recheck/reannounce, and preference changes as high-risk; require explicit intent from the current user request. Never use hashes="all" for destructive operations unless the user explicitly includes "all". Prefer targeted hashes and minimal scope. Before mutating state, first read current state and describe planned changes briefly. After mutation, verify by reading back and report the result. For add_new_torrent, "torrent" must be base64 string or byte array.'
+        'Safety policy: default to read-only operations. Do not run destructive or state-changing actions unless the user explicitly asks for that exact action. Treat delete, remove, rename, stop/pause, recheck/reannounce, and preference changes as high-risk; require explicit intent from the current user request. Never use hashes="all" for destructive operations unless the user explicitly includes "all". Prefer targeted hashes and minimal scope. Before mutating state, first read current state and describe planned changes briefly. After mutation, verify by reading back and report the result. If a tool call fails or returns an unexpected error, call get_log first; if the issue may involve peers/connection blocking, also call get_peer_log, then respond with findings. For add_new_torrent, "torrent" must be base64 string or byte array.'
     }
   );
 
