@@ -4,4 +4,6 @@ import { version } from '../package.json';
 
 const cli = breadc('nqbtc', { version });
 
-cli.run(process.argv.slice(2)).catch((err) => console.error(err));
+cli.command('mcp', 'Start mcp server').action(async () => {});
+
+await cli.run(process.argv.slice(2)).catch((err) => console.error(err));

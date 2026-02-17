@@ -1,9 +1,13 @@
 # Dependency directory
 node_modules
+.pnpm-store
 
 # Build output
 dist
 .turbo
+
+# Environment
+.env
 
 # Rest pulled from https://github.com/github/gitignore/blob/master/Node.gitignore
 # Logs

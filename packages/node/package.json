@@ -32,6 +32,6 @@
     "typecheck": "tsc --noEmit"
   },
   "engines": {
-    "node": ">=v20.10.0"
+    "node": ">=v24.0.0"
   }
 }

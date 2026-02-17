@@ -31,7 +31,10 @@
     "test:ci": "vitest --run",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@nqbt/core": "workspace:*"
+  },
   "engines": {
-    "node": ">=v20.10.0"
+    "node": ">=v24.0.0"
   }
 }

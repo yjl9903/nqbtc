@@ -30,15 +30,28 @@ importers:
         specifier: ^4.0.18
         version: 4.0.18(@types/node@24.10.13)(jiti@2.6.1)(yaml@2.8.2)
 
+  packages/core:
+    dependencies:
+      cookie:
+        specifier: ^1.1.1
+        version: 1.1.1
+      uint8array-extras:
+        specifier: ^1.5.0
+        version: 1.5.0
+
   packages/node: {}
 
-  packages/nqbt: {}
+  packages/nqbt:
+    dependencies:
+      '@nqbt/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/nqbtc:
     dependencies:
       breadc:
-        specifier: ^0.9.7
-        version: 0.9.7
+        specifier: 1.0.0-beta.10
+        version: 1.0.0-beta.10
 
 packages:
 
@@ -63,8 +76,17 @@ packages:
     resolution: {integrity: sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A==}
     engines: {node: '>=6.9.0'}
 
-  '@breadc/color@0.9.7':
-    resolution: {integrity: sha512-kO795IASRzZrlr4XOkyAS11MLeJOmKDVFSuetsim5VLrUPaFz+R01c1uYB4ggxIPaveRSIOfVEoPLwF+9dZm9g==}
+  '@breadc/color@1.0.0-beta.10':
+    resolution: {integrity: sha512-Ohiyw5TDYRaZokBt6+qw0xsn9NbeUvAExgsbFA1nE9BqfXGVnxsvI6vAIoil5aSHumEpAxjUAF8muRPH5BCQEQ==}
+
+  '@breadc/core@1.0.0-beta.10':
+    resolution: {integrity: sha512-ttaS9mRpQikuEV055u9TLh3bePdXoZV4nFnVXDfswFrJC7zgspZ2U9KHm8G3SUofqF9OSHTZ7IPh44RNfmjkFA==}
+
+  '@breadc/death@1.0.0-beta.10':
+    resolution: {integrity: sha512-SD9A1sJsnHb3nhGkLVSddBnPSakXHxfrOtgCF6322yADkNQ6TLRgd8yVz1KWppoJvKOJAVuxGZSoiyRe+QXACw==}
+
+  '@breadc/tui@1.0.0-beta.10':
+    resolution: {integrity: sha512-/EKJxYG5YAyZ53mXZusOdbY5OfHSO4o4hDahZV6yRoKpWeEYkXDfkdHACJFrYu+Jarw0UTxHHXpPjsQMz1OX+w==}
 
   '@emnapi/core@1.8.1':
     resolution: {integrity: sha512-AvT9QFpxK0Zd8J0jopedNm+w/2fIzvtPKPjqyw9jwvBaReTTqPBk9Hixaz7KbjimP+QNz605/XnjFcDAL2pqBg==}
@@ -615,6 +637,10 @@ packages:
   '@vitest/utils@4.0.18':
     resolution: {integrity: sha512-msMRKLMVLWygpK3u2Hybgi4MNjcYJvwTb0Ru09+fOyCXIgT5raYP041DRRdiJiI3k/2U6SEbAETB3YtBrUkCFA==}
 
+  ansi-regex@6.2.2:
+    resolution: {integrity: sha512-Bq3SmSpyFHaWjPk8If9yc6svM8c56dB5BAtW4Qbw5jHTwwXXcTLoRMkpDJp6VL0XzlWaCHTXrkFURMYmD0sLqg==}
+    engines: {node: '>=12'}
+
   ansis@4.2.0:
     resolution: {integrity: sha512-HqZ5rWlFjGiV0tDm3UxxgNRqsOTniqoKZu0pIAfh7TZQMGuZK+hH0drySty0si0QXj1ieop4+SkSfPZBPPkHig==}
     engines: {node: '>=14'}
@@ -633,8 +659,8 @@ packages:
   birpc@4.0.0:
     resolution: {integrity: sha512-LShSxJP0KTmd101b6DRyGBj57LZxSDYWKitQNW/mi8GRMvZb078Uf9+pveax1DrVL89vm7mWe+TovdI/UDOuPw==}
 
-  breadc@0.9.7:
-    resolution: {integrity: sha512-0eJNb27GKlGPlMJfmBZ0D+dEENwj+QDkSWlH+2bW2g3OWs00mCGh6Me1+yDhLbZyqS7pnSLPgx7AigHDzIKoug==}
+  breadc@1.0.0-beta.10:
+    resolution: {integrity: sha512-pdhMLCXdTS4nTnkv7rfD+gIZli5vb3YyCXyucYRK6eIcauBRfVJNRu32pszNcQ8IKzKdaMDjUNTslYAdGnGGBg==}
 
   bumpp@10.4.1:
     resolution: {integrity: sha512-X/bwWs5Gbb/D7rN4aHLB7zdjiA6nGdjckM1sTHhI9oovIbEw2L5pw5S4xzk8ZTeOZ8EnwU/Ze4SoZ6/Vr3pM2Q==}
@@ -673,6 +699,10 @@ packages:
   consola@3.4.2:
     resolution: {integrity: sha512-5IKcdX0nnYavi6G7TtOhwkYzyjfJlatbjMjuLSfE2kYT5pMDOilZ4OvMhi637CcDICTmz3wARPoyhqyX1Y+XvA==}
     engines: {node: ^14.18.0 || >=16.10.0}
+
+  cookie@1.1.1:
+    resolution: {integrity: sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ==}
+    engines: {node: '>=18'}
 
   defu@6.1.4:
     resolution: {integrity: sha512-mEQCMmwJu317oSz8CwdIOdwf3xMif1ttiM8LTufzc3g6kR+9Pe236twL8j3IYT1F7GfRgGcW6MWxzZjLIkuHIg==}
@@ -736,6 +766,10 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  get-east-asian-width@1.4.0:
+    resolution: {integrity: sha512-QZjmEOC+IT1uk6Rx0sX22V6uHWVwbdbxf1faPqJ1QhLdGgsRGCZoyaQBm/piRdJy/D2um6hM1UP7ZEeQ4EkP+Q==}
+    engines: {node: '>=18'}
 
   get-tsconfig@4.13.6:
     resolution: {integrity: sha512-shZT/QMiSHc/YBLxxOkMtgSid5HFoauqCE3/exfsEcwg1WkeqjG+V40yBbBrsD+jW2HDXcs28xOfcbm2jI8Ddw==}
@@ -869,6 +903,14 @@ packages:
   std-env@3.10.0:
     resolution: {integrity: sha512-5GS12FdOZNliM5mAOxFRg7Ir0pWz8MdpYm6AY6VPkGpbA7ZzmbzNcBJQ0GPvvyWgcY7QAhCgf9Uy89I03faLkg==}
 
+  string-width@8.1.1:
+    resolution: {integrity: sha512-KpqHIdDL9KwYk22wEOg/VIqYbrnLeSApsKT/bSj6Ez7pn3CftUiLAv2Lccpq1ALcpLV9UX1Ppn92npZWu2w/aw==}
+    engines: {node: '>=20'}
+
+  strip-ansi@7.1.2:
+    resolution: {integrity: sha512-gmBGslpoQJtgnMAvOVqGZpEz9dyoKTCzy2nfz/n8aIFhN/jCE/rCmcxabB6jOOHV+0WNnylOxaxBQPSvcWklhA==}
+    engines: {node: '>=12'}
+
   tinybench@2.9.0:
     resolution: {integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==}
 
@@ -954,6 +996,10 @@ packages:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
     engines: {node: '>=14.17'}
     hasBin: true
+
+  uint8array-extras@1.5.0:
+    resolution: {integrity: sha512-rvKSBiC5zqCCiDZ9kAOszZcDvdAHwwIKJG33Ykj43OKcWsnmcBRL09YTU4nOeHZ8Y2a7l1MgTd08SBe9A8Qj6A==}
+    engines: {node: '>=18'}
 
   unconfig-core@7.5.0:
     resolution: {integrity: sha512-Su3FauozOGP44ZmKdHy2oE6LPjk51M/TRRjHv2HNCWiDvfvCoxC2lno6jevMA91MYAdCdwP05QnWdWpSbncX/w==}
@@ -1078,7 +1124,19 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
 
-  '@breadc/color@0.9.7': {}
+  '@breadc/color@1.0.0-beta.10': {}
+
+  '@breadc/core@1.0.0-beta.10':
+    dependencies:
+      '@breadc/color': 1.0.0-beta.10
+
+  '@breadc/death@1.0.0-beta.10': {}
+
+  '@breadc/tui@1.0.0-beta.10':
+    dependencies:
+      '@breadc/color': 1.0.0-beta.10
+      std-env: 3.10.0
+      string-width: 8.1.1
 
   '@emnapi/core@1.8.1':
     dependencies:
@@ -1426,6 +1484,8 @@ snapshots:
       '@vitest/pretty-format': 4.0.18
       tinyrainbow: 3.0.3
 
+  ansi-regex@6.2.2: {}
+
   ansis@4.2.0: {}
 
   args-tokenizer@0.3.0: {}
@@ -1439,9 +1499,12 @@ snapshots:
 
   birpc@4.0.0: {}
 
-  breadc@0.9.7:
+  breadc@1.0.0-beta.10:
     dependencies:
-      '@breadc/color': 0.9.7
+      '@breadc/color': 1.0.0-beta.10
+      '@breadc/core': 1.0.0-beta.10
+      '@breadc/death': 1.0.0-beta.10
+      '@breadc/tui': 1.0.0-beta.10
 
   bumpp@10.4.1:
     dependencies:
@@ -1491,6 +1554,8 @@ snapshots:
   confbox@0.2.4: {}
 
   consola@3.4.2: {}
+
+  cookie@1.1.1: {}
 
   defu@6.1.4: {}
 
@@ -1551,6 +1616,8 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  get-east-asian-width@1.4.0: {}
 
   get-tsconfig@4.13.6:
     dependencies:
@@ -1721,6 +1788,15 @@ snapshots:
 
   std-env@3.10.0: {}
 
+  string-width@8.1.1:
+    dependencies:
+      get-east-asian-width: 1.4.0
+      strip-ansi: 7.1.2
+
+  strip-ansi@7.1.2:
+    dependencies:
+      ansi-regex: 6.2.2
+
   tinybench@2.9.0: {}
 
   tinyexec@1.0.2: {}
@@ -1791,6 +1867,8 @@ snapshots:
       turbo-windows-arm64: 2.8.9
 
   typescript@5.9.3: {}
+
+  uint8array-extras@1.5.0: {}
 
   unconfig-core@7.5.0:
     dependencies:
