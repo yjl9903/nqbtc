@@ -4,7 +4,8 @@
   "description": "qBittorrent CLI",
   "keywords": [
     "qBittorrent",
-    "mcp"
+    "mcp",
+    "CLI"
   ],
   "homepage": "https://github.com/yjl9903/nqbt#readme",
   "bugs": {
@@ -12,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yjl9903/nqbt.git"
+    "url": "git+https://github.com/yjl9903/nqbtc.git"
   },
   "license": "MIT",
   "author": "XLor",
