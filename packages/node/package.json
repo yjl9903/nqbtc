@@ -1,8 +1,10 @@
 {
   "name": "@nqbt/node",
   "version": "0.0.2",
-  "description": "",
-  "keywords": [],
+  "description": "TypeScript qBittorrent WebUI API binding",
+  "keywords": [
+    "qBittorrent"
+  ],
   "homepage": "https://github.com/yjl9903/nqbt#readme",
   "bugs": {
     "url": "https://github.com/yjl9903/nqbt/issues"
@@ -14,6 +16,7 @@
   "license": "MIT",
   "author": "XLor",
   "sideEffects": false,
+  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",

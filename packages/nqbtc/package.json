@@ -1,8 +1,11 @@
 {
   "name": "nqbtc",
   "version": "0.0.2",
-  "description": "",
-  "keywords": [],
+  "description": "qBittorrent CLI",
+  "keywords": [
+    "qBittorrent",
+    "mcp"
+  ],
   "homepage": "https://github.com/yjl9903/nqbt#readme",
   "bugs": {
     "url": "https://github.com/yjl9903/nqbt/issues"
@@ -14,6 +17,7 @@
   "license": "MIT",
   "author": "XLor",
   "sideEffects": false,
+  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
