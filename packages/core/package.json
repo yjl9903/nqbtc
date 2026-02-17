@@ -1,6 +1,6 @@
 {
   "name": "@nqbt/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript qBittorrent WebUI API binding",
   "keywords": [
     "qBittorrent"
