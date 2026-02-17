@@ -2,19 +2,7 @@ import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mc
 
 import type { QBittorrent } from '@nqbt/core';
 
-const JSON_MIME_TYPE = 'application/json';
-
-function toJsonResource(uri: string, data: unknown) {
-  return {
-    contents: [
-      {
-        uri,
-        mimeType: JSON_MIME_TYPE,
-        text: JSON.stringify(data, null, 2)
-      }
-    ]
-  };
-}
+import { JSON_MIME_TYPE, toJsonResource } from './utils.js';
 
 function normalizeVariable(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) {

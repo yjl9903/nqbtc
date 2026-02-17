@@ -30,25 +30,14 @@ import {
   tagsInputSchema,
   torrentLimitInputSchema
 } from './schema.js';
-
-function formatResult(value: unknown): string {
-  if (typeof value === 'string') {
-    return value;
-  }
-
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
+import { formatResultText } from './utils.js';
 
 function getToolResult(result: unknown) {
   return {
     content: [
       {
         type: 'text' as const,
-        text: formatResult(result)
+        text: formatResultText(result)
       }
     ],
     structuredContent: {
@@ -89,34 +78,24 @@ function registerToolWithArgs<TSchema extends z.ZodTypeAny>(
 export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittorrent): void {
   registerNoArgsTool(
     server,
-    'qbittorrent.getApplicationVersion',
+    'get_application_version',
     'Get qBittorrent application version.',
     async () => {
       return qbittorrent.getApplicationVersion();
     }
   );
 
-  registerNoArgsTool(
-    server,
-    'qbittorrent.getApiVersion',
-    'Get qBittorrent WebUI API version.',
-    async () => {
-      return qbittorrent.getApiVersion();
-    }
-  );
+  registerNoArgsTool(server, 'get_api_version', 'Get qBittorrent WebUI API version.', async () => {
+    return qbittorrent.getApiVersion();
+  });
+
+  registerNoArgsTool(server, 'get_build_info', 'Get qBittorrent build info.', async () => {
+    return qbittorrent.getBuildInfo();
+  });
 
   registerNoArgsTool(
     server,
-    'qbittorrent.getBuildInfo',
-    'Get qBittorrent build info.',
-    async () => {
-      return qbittorrent.getBuildInfo();
-    }
-  );
-
-  registerNoArgsTool(
-    server,
-    'qbittorrent.getApplicationPreferences',
+    'get_application_preferences',
     'Get qBittorrent application preferences.',
     async () => {
       return qbittorrent.getApplicationPreferences();
@@ -125,7 +104,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.setApplicationPreferences',
+    'set_application_preferences',
     'Set qBittorrent application preferences.',
     setApplicationPreferencesInputSchema,
     async (args) => {
@@ -135,7 +114,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerNoArgsTool(
     server,
-    'qbittorrent.getDefaultSavePath',
+    'get_default_save_path',
     'Get qBittorrent default save path.',
     async () => {
       return qbittorrent.getDefaultSavePath();
@@ -144,7 +123,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.getTorrentPeersData',
+    'get_torrent_peers_data',
     'Get torrent peers data.',
     getTorrentPeersDataInputSchema,
     async (args) => {
@@ -154,7 +133,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.getTorrentList',
+    'get_torrent_list',
     'Get torrent list with optional filters.',
     getTorrentListInputSchema,
     async (args) => {
@@ -164,7 +143,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.getTorrentGenericProperties',
+    'get_torrent_generic_properties',
     'Get generic properties of a torrent.',
     hashInputSchema,
     async (args) => {
@@ -174,7 +153,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.getTorrentTrackers',
+    'get_torrent_trackers',
     'Get trackers of a torrent.',
     hashInputSchema,
     async (args) => {
@@ -184,7 +163,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.getTorrentWebSeeds',
+    'get_torrent_web_seeds',
     'Get web seeds of a torrent.',
     hashInputSchema,
     async (args) => {
@@ -194,7 +173,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.getTorrentContents',
+    'get_torrent_contents',
     'Get files of a torrent.',
     hashInputSchema,
     async (args) => {
@@ -204,7 +183,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.getTorrentPiecesStates',
+    'get_torrent_pieces_states',
     'Get piece states of a torrent.',
     hashInputSchema,
     async (args) => {
@@ -214,7 +193,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.getTorrentPiecesHashes',
+    'get_torrent_pieces_hashes',
     'Get piece hashes of a torrent.',
     hashInputSchema,
     async (args) => {
@@ -224,7 +203,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.stopTorrents',
+    'stop_torrents',
     'Stop one or more torrents.',
     hashesInputSchema,
     async (args) => {
@@ -234,7 +213,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.startTorrents',
+    'start_torrents',
     'Start one or more torrents.',
     hashesInputSchema,
     async (args) => {
@@ -244,7 +223,27 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.deleteTorrents',
+    'pause_torrents',
+    'Pause one or more torrents.',
+    hashesInputSchema,
+    async (args) => {
+      return qbittorrent.pauseTorrents(args.hashes);
+    }
+  );
+
+  registerToolWithArgs(
+    server,
+    'resume_torrents',
+    'Resume one or more torrents.',
+    hashesInputSchema,
+    async (args) => {
+      return qbittorrent.resumeTorrents(args.hashes);
+    }
+  );
+
+  registerToolWithArgs(
+    server,
+    'delete_torrents',
     'Delete one or more torrents.',
     deleteTorrentsInputSchema,
     async (args) => {
@@ -254,7 +253,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.recheckTorrents',
+    'recheck_torrents',
     'Force recheck one or more torrents.',
     hashesInputSchema,
     async (args) => {
@@ -264,7 +263,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.reannounceTorrents',
+    'reannounce_torrents',
     'Reannounce one or more torrents.',
     hashesInputSchema,
     async (args) => {
@@ -274,7 +273,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.editTrackers',
+    'edit_trackers',
     'Edit a tracker URL on a torrent.',
     editTrackersInputSchema,
     async (args) => {
@@ -284,7 +283,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.removeTrackers',
+    'remove_trackers',
     'Remove trackers from a torrent.',
     removeTrackersInputSchema,
     async (args) => {
@@ -294,7 +293,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.addNewTorrent',
+    'add_new_torrent',
     'Add a new torrent from bytes. `torrent` accepts base64 string or byte array.',
     addNewTorrentInputSchema,
     async (args) => {
@@ -309,7 +308,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.addNewMagnet',
+    'add_new_magnet',
     'Add new torrent(s) by magnet URL(s).',
     addNewMagnetInputSchema,
     async (args) => {
@@ -319,7 +318,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.addTrackersToTorrent',
+    'add_trackers_to_torrent',
     'Add trackers to a torrent.',
     addTrackersToTorrentInputSchema,
     async (args) => {
@@ -329,7 +328,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.increaseTorrentPriority',
+    'increase_torrent_priority',
     'Increase queue priority for torrents.',
     hashesInputSchema,
     async (args) => {
@@ -339,7 +338,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.decreaseTorrentPriority',
+    'decrease_torrent_priority',
     'Decrease queue priority for torrents.',
     hashesInputSchema,
     async (args) => {
@@ -349,7 +348,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.maximalTorrentPriority',
+    'maximal_torrent_priority',
     'Move torrents to maximal queue priority.',
     hashesInputSchema,
     async (args) => {
@@ -359,7 +358,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.minimalTorrentPriority',
+    'minimal_torrent_priority',
     'Move torrents to minimal queue priority.',
     hashesInputSchema,
     async (args) => {
@@ -369,7 +368,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.setFilePriority',
+    'set_file_priority',
     'Set file priority inside a torrent.',
     setFilePriorityInputSchema,
     async (args) => {
@@ -379,7 +378,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.getTorrentDownloadLimit',
+    'get_torrent_download_limit',
     'Get per-torrent download speed limit.',
     torrentLimitInputSchema,
     async (args) => {
@@ -389,7 +388,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.setTorrentDownloadLimit',
+    'set_torrent_download_limit',
     'Set per-torrent download speed limit.',
     setTorrentLimitInputSchema,
     async (args) => {
@@ -399,7 +398,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.getTorrentUploadLimit',
+    'get_torrent_upload_limit',
     'Get per-torrent upload speed limit.',
     torrentLimitInputSchema,
     async (args) => {
@@ -409,7 +408,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.setTorrentUploadLimit',
+    'set_torrent_upload_limit',
     'Set per-torrent upload speed limit.',
     setTorrentLimitInputSchema,
     async (args) => {
@@ -419,7 +418,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.setTorrentLocation',
+    'set_torrent_location',
     'Set save location for torrents.',
     setTorrentLocationInputSchema,
     async (args) => {
@@ -429,7 +428,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.setTorrentName',
+    'set_torrent_name',
     'Rename a torrent.',
     setTorrentNameInputSchema,
     async (args) => {
@@ -439,7 +438,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.setTorrentCategory',
+    'set_torrent_category',
     'Set category for torrents.',
     setTorrentCategoryInputSchema,
     async (args) => {
@@ -447,13 +446,13 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
     }
   );
 
-  registerNoArgsTool(server, 'qbittorrent.getAllCategories', 'Get all categories.', async () => {
+  registerNoArgsTool(server, 'get_all_categories', 'Get all categories.', async () => {
     return qbittorrent.getAllCategories();
   });
 
   registerToolWithArgs(
     server,
-    'qbittorrent.addNewCategory',
+    'add_new_category',
     'Create a new category.',
     addNewCategoryInputSchema,
     async (args) => {
@@ -463,7 +462,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.editCategory',
+    'edit_category',
     'Edit category save path.',
     editCategoryInputSchema,
     async (args) => {
@@ -473,7 +472,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.removeCategories',
+    'remove_categories',
     'Remove one or more categories.',
     removeCategoriesInputSchema,
     async (args) => {
@@ -483,7 +482,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.addTorrentTags',
+    'add_torrent_tags',
     'Add tags to torrents.',
     addTorrentTagsInputSchema,
     async (args) => {
@@ -493,7 +492,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.removeTorrentTags',
+    'remove_torrent_tags',
     'Remove tags from torrents.',
     removeTorrentTagsInputSchema,
     async (args) => {
@@ -501,13 +500,13 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
     }
   );
 
-  registerNoArgsTool(server, 'qbittorrent.getAllTags', 'Get all tags.', async () => {
+  registerNoArgsTool(server, 'get_all_tags', 'Get all tags.', async () => {
     return qbittorrent.getAllTags();
   });
 
   registerToolWithArgs(
     server,
-    'qbittorrent.createTags',
+    'create_tags',
     'Create one or more tags.',
     tagsInputSchema,
     async (args) => {
@@ -517,7 +516,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.deleteTags',
+    'delete_tags',
     'Delete one or more tags.',
     tagsInputSchema,
     async (args) => {
@@ -527,7 +526,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.renameFile',
+    'rename_file',
     'Rename a file in a torrent.',
     renamePathInputSchema,
     async (args) => {
@@ -537,7 +536,7 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
-    'qbittorrent.renameFolder',
+    'rename_folder',
     'Rename a folder in a torrent.',
     renamePathInputSchema,
     async (args) => {

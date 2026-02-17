@@ -1,4 +1,4 @@
-# npx @modelcontextprotocol/inspector node packages/nqbtc/cli.mjs mcp --base-url=http://localhost:9091/api/v2
+# pnpx @modelcontextprotocol/inspector node packages/nqbtc/cli.mjs mcp --base-url=http://localhost:9091/api/v2
 
 # [mcp_servers.qbittorrent]
 # command = "node"

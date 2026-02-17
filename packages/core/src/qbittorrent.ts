@@ -275,7 +275,9 @@ export class QBittorrent {
       undefined,
       objToUrlSearchParams({
         json: JSON.stringify(preferences)
-      })
+      }),
+      undefined,
+      false
     );
     return true;
   }
@@ -476,12 +478,13 @@ export class QBittorrent {
    * @param hashes Torrent hash, multiple hashes, or `all`.
    * @returns `true` when request succeeds.
    * @remarks Uses `/torrents/stop` on qBittorrent v5+, falls back to `/torrents/pause` for older versions.
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#stop-torrents}
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#pause-torrents}
    */
   async stopTorrents(hashes: string | string[] | 'all'): Promise<boolean> {
+    await this.checkVersion();
     const endpoint = this.state.version?.isVersion5OrHigher ? '/torrents/stop' : '/torrents/pause';
     const data = { hashes: normalizeHashes(hashes) };
-    await this.request(endpoint, 'POST', undefined, objToUrlSearchParams(data));
+    await this.request(endpoint, 'POST', undefined, objToUrlSearchParams(data), undefined, false);
     return true;
   }
 
@@ -490,7 +493,7 @@ export class QBittorrent {
    * @param hashes Torrent hash, multiple hashes, or `all`.
    * @returns `true` when request succeeds.
    * @remarks Uses `/torrents/stop` on qBittorrent v5+, falls back to `/torrents/pause` for older versions.
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#stop-torrents}
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#pause-torrents}
    */
   async pauseTorrents(hashes: string | string[] | 'all'): Promise<boolean> {
     return this.stopTorrents(hashes);
@@ -501,14 +504,15 @@ export class QBittorrent {
    * @param hashes Torrent hash, multiple hashes, or `all`.
    * @returns `true` when request succeeds.
    * @remarks Uses `/torrents/start` on qBittorrent v5+, falls back to `/torrents/resume` for older versions.
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#start-torrents}
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#resume-torrents}
    */
   async startTorrents(hashes: string | string[] | 'all'): Promise<boolean> {
+    await this.checkVersion();
     const endpoint = this.state.version?.isVersion5OrHigher
       ? '/torrents/start'
       : '/torrents/resume';
     const data = { hashes: normalizeHashes(hashes) };
-    await this.request(endpoint, 'POST', undefined, objToUrlSearchParams(data));
+    await this.request(endpoint, 'POST', undefined, objToUrlSearchParams(data), undefined, false);
     return true;
   }
 
@@ -517,7 +521,7 @@ export class QBittorrent {
    * @param hashes Torrent hash, multiple hashes, or `all`.
    * @returns `true` when request succeeds.
    * @remarks Uses `/torrents/start` on qBittorrent v5+, falls back to `/torrents/resume` for older versions.
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#start-torrents}
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#resume-torrents}
    */
   async resumeTorrents(hashes: string | string[] | 'all'): Promise<boolean> {
     return this.startTorrents(hashes);
@@ -554,7 +558,14 @@ export class QBittorrent {
    */
   async recheckTorrents(hashes: string | string[] | 'all'): Promise<boolean> {
     const data = { hashes: normalizeHashes(hashes) };
-    await this.request('/torrents/recheck', 'POST', undefined, objToUrlSearchParams(data));
+    await this.request(
+      '/torrents/recheck',
+      'POST',
+      undefined,
+      objToUrlSearchParams(data),
+      undefined,
+      false
+    );
     return true;
   }
 
@@ -566,7 +577,14 @@ export class QBittorrent {
    */
   async reannounceTorrents(hashes: string | string[] | 'all'): Promise<boolean> {
     const data = { hashes: normalizeHashes(hashes) };
-    await this.request('/torrents/reannounce', 'POST', undefined, objToUrlSearchParams(data));
+    await this.request(
+      '/torrents/reannounce',
+      'POST',
+      undefined,
+      objToUrlSearchParams(data),
+      undefined,
+      false
+    );
     return true;
   }
 
@@ -580,7 +598,14 @@ export class QBittorrent {
    */
   async editTrackers(hash: string, origUrl: string, newUrl: string): Promise<boolean> {
     const data = { hash, origUrl, newUrl };
-    await this.request('/torrents/editTrackers', 'POST', undefined, objToUrlSearchParams(data));
+    await this.request(
+      '/torrents/editTrackers',
+      'POST',
+      undefined,
+      objToUrlSearchParams(data),
+      undefined,
+      false
+    );
     return true;
   }
 
@@ -593,7 +618,14 @@ export class QBittorrent {
    */
   async removeTrackers(hash: string, urls: string | string[]): Promise<boolean> {
     const data = { hash, urls: normalizeList(urls, '|') };
-    await this.request('/torrents/removeTrackers', 'POST', undefined, objToUrlSearchParams(data));
+    await this.request(
+      '/torrents/removeTrackers',
+      'POST',
+      undefined,
+      objToUrlSearchParams(data),
+      undefined,
+      false
+    );
     return true;
   }
 
@@ -622,6 +654,7 @@ export class QBittorrent {
 
     if (options) {
       // Handle version-specific paused/stopped parameter
+      await this.checkVersion();
       if (this.state.version?.isVersion5OrHigher && options.paused !== undefined) {
         if (options.stopped === undefined) {
           options.stopped = options.paused;
@@ -680,6 +713,7 @@ export class QBittorrent {
 
     if (options) {
       // Handle version-specific paused/stopped parameter
+      await this.checkVersion();
       if (this.state.version?.isVersion5OrHigher && options.paused !== undefined) {
         if (options.stopped === undefined) {
           options.stopped = options.paused;
@@ -730,7 +764,14 @@ export class QBittorrent {
    */
   async addTrackersToTorrent(hash: string, urls: string | string[]): Promise<boolean> {
     const data = { hash, urls: normalizeList(urls, '\n') };
-    await this.request('/torrents/addTrackers', 'POST', undefined, objToUrlSearchParams(data));
+    await this.request(
+      '/torrents/addTrackers',
+      'POST',
+      undefined,
+      objToUrlSearchParams(data),
+      undefined,
+      false
+    );
     return true;
   }
 
@@ -742,7 +783,14 @@ export class QBittorrent {
    */
   async increaseTorrentPriority(hashes: string | string[] | 'all'): Promise<boolean> {
     const data = { hashes: normalizeHashes(hashes) };
-    await this.request('/torrents/increasePrio', 'POST', undefined, objToUrlSearchParams(data));
+    await this.request(
+      '/torrents/increasePrio',
+      'POST',
+      undefined,
+      objToUrlSearchParams(data),
+      undefined,
+      false
+    );
     return true;
   }
 
@@ -754,7 +802,14 @@ export class QBittorrent {
    */
   async decreaseTorrentPriority(hashes: string | string[] | 'all'): Promise<boolean> {
     const data = { hashes: normalizeHashes(hashes) };
-    await this.request('/torrents/decreasePrio', 'POST', undefined, objToUrlSearchParams(data));
+    await this.request(
+      '/torrents/decreasePrio',
+      'POST',
+      undefined,
+      objToUrlSearchParams(data),
+      undefined,
+      false
+    );
     return true;
   }
 
@@ -766,7 +821,14 @@ export class QBittorrent {
    */
   async maximalTorrentPriority(hashes: string | string[] | 'all'): Promise<boolean> {
     const data = { hashes: normalizeHashes(hashes) };
-    await this.request('/torrents/topPrio', 'POST', undefined, objToUrlSearchParams(data));
+    await this.request(
+      '/torrents/topPrio',
+      'POST',
+      undefined,
+      objToUrlSearchParams(data),
+      undefined,
+      false
+    );
     return true;
   }
 
@@ -778,7 +840,14 @@ export class QBittorrent {
    */
   async minimalTorrentPriority(hashes: string | string[] | 'all'): Promise<boolean> {
     const data = { hashes: normalizeHashes(hashes) };
-    await this.request('/torrents/bottomPrio', 'POST', undefined, objToUrlSearchParams(data));
+    await this.request(
+      '/torrents/bottomPrio',
+      'POST',
+      undefined,
+      objToUrlSearchParams(data),
+      undefined,
+      false
+    );
     return true;
   }
 
@@ -844,7 +913,14 @@ export class QBittorrent {
       hashes: normalizeHashes(hash)
     };
 
-    await this.request('/torrents/setDownloadLimit', 'POST', undefined, objToUrlSearchParams(data));
+    await this.request(
+      '/torrents/setDownloadLimit',
+      'POST',
+      undefined,
+      objToUrlSearchParams(data),
+      undefined,
+      false
+    );
     return true;
   }
 
@@ -882,7 +958,14 @@ export class QBittorrent {
       hashes: normalizeHashes(hash)
     };
 
-    await this.request('/torrents/setUploadLimit', 'POST', undefined, objToUrlSearchParams(data));
+    await this.request(
+      '/torrents/setUploadLimit',
+      'POST',
+      undefined,
+      objToUrlSearchParams(data),
+      undefined,
+      false
+    );
     return true;
   }
 
@@ -898,7 +981,14 @@ export class QBittorrent {
       location,
       hashes: normalizeHashes(hashes)
     };
-    await this.request('/torrents/setLocation', 'POST', undefined, objToUrlSearchParams(data));
+    await this.request(
+      '/torrents/setLocation',
+      'POST',
+      undefined,
+      objToUrlSearchParams(data),
+      undefined,
+      false
+    );
     return true;
   }
 
@@ -911,7 +1001,14 @@ export class QBittorrent {
    */
   async setTorrentName(hash: string, name: string): Promise<boolean> {
     const data = { hash, name };
-    await this.request('/torrents/rename', 'POST', undefined, objToUrlSearchParams(data));
+    await this.request(
+      '/torrents/rename',
+      'POST',
+      undefined,
+      objToUrlSearchParams(data),
+      undefined,
+      false
+    );
     return true;
   }
 
@@ -927,7 +1024,14 @@ export class QBittorrent {
       hashes: normalizeHashes(hashes),
       category
     };
-    await this.request('/torrents/setCategory', 'POST', undefined, objToUrlSearchParams(data));
+    await this.request(
+      '/torrents/setCategory',
+      'POST',
+      undefined,
+      objToUrlSearchParams(data),
+      undefined,
+      false
+    );
     return true;
   }
 
@@ -1161,7 +1265,7 @@ export class QBittorrent {
    * @param params Query string parameters.
    * @param body Request body for `POST` endpoints.
    * @param headers Additional request headers.
-   * @param isJson When `true`, parse response as JSON; otherwise return plain text.
+   * @param isJSON When `true`, parse response as JSON; otherwise return plain text.
    * @returns Parsed response payload.
    */
   private async request<T>(
@@ -1170,7 +1274,7 @@ export class QBittorrent {
     params?: Record<string, string | number>,
     body?: URLSearchParams | FormData,
     headers: Record<string, string> = {},
-    isJson = true
+    isJSON = true
   ): Promise<T> {
     if (
       !this.state.auth?.sid ||
@@ -1199,7 +1303,7 @@ export class QBittorrent {
       body
     });
 
-    if (isJson) {
+    if (isJSON) {
       return (await res.json()) as T;
     }
 
