@@ -179,6 +179,15 @@ Support TypeScript API:
 > - `stopTorrents` and `pauseTorrents` are both available; both auto-switch to `/torrents/stop` (v5) or `/torrents/pause` (v4).
 > - `startTorrents` and `resumeTorrents` are both available; both auto-switch to `/torrents/start` (v5) or `/torrents/resume` (v4).
 
+## Related
+
+This package is used to power [AnimeSpace](https://github.com/yjl9903/AnimeGarden), offering a comprehensive solution for automatically following bangumis. It can fetch anime resources, download desired video content, and upload them to the local file system or remote WebDAV server. The downloading process is facilitated by this package.
+
+## Credits
+
+- [qBittorrent](https://www.qbittorrent.org/)
+- [@ctrl/qbittorrent](https://github.com/scttcper/qbittorrent)
+
 ## License
 
 MIT License © 2025 [XLor](https://github.com/yjl9903)
