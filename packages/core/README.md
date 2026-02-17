@@ -106,11 +106,13 @@ Support TypeScript API:
 | Torrent Management | `removeTrackers` | [remove-trackers](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#remove-trackers) |
 | Torrent Management | `addNewTorrent` / `addNewMagnet` | [add-new-torrent](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#add-new-torrent) |
 | Torrent Management | `addTrackersToTorrent` | [add-trackers-to-torrent](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#add-trackers-to-torrent) |
+| Torrent Management | `addPeers` | [add-peers](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#add-peers) |
 | Torrent Management | `increaseTorrentPriority` | [increase-torrent-priority](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#increase-torrent-priority) |
 | Torrent Management | `decreaseTorrentPriority` | [decrease-torrent-priority](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#decrease-torrent-priority) |
 | Torrent Management | `maximalTorrentPriority` | [maximal-torrent-priority](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#maximal-torrent-priority) |
 | Torrent Management | `minimalTorrentPriority` | [minimal-torrent-priority](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#minimal-torrent-priority) |
 | Torrent Management | `setFilePriority` | [set-file-priority](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-file-priority) |
+| Torrent Management | `setTorrentShareLimits` | [set-torrent-share-limits](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-torrent-share-limits) |
 | Torrent Management | `getTorrentDownloadLimit` | [get-torrent-download-limit](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-download-limit) |
 | Torrent Management | `setTorrentDownloadLimit` | [set-torrent-download-limit](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-torrent-download-limit) |
 | Torrent Management | `getTorrentUploadLimit` | [get-torrent-upload-limit](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-upload-limit) |
@@ -118,6 +120,11 @@ Support TypeScript API:
 | Torrent Management | `setTorrentLocation` | [set-torrent-location](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-torrent-location) |
 | Torrent Management | `setTorrentName` | [set-torrent-name](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-torrent-name) |
 | Torrent Management | `setTorrentCategory` | [set-torrent-category](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-torrent-category) |
+| Torrent Management | `setAutomaticTorrentManagement` | [set-automatic-torrent-management](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-automatic-torrent-management) |
+| Torrent Management | `toggleSequentialDownload` | [toggle-sequential-download](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#toggle-sequential-download) |
+| Torrent Management | `setFirstLastPiecePriority` | [set-firstlast-piece-priority](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-firstlast-piece-priority) |
+| Torrent Management | `setForceStart` | [set-force-start](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-force-start) |
+| Torrent Management | `setSuperSeeding` | [set-super-seeding](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-super-seeding) |
 | Torrent Management | `getAllCategories` | [get-all-categories](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-all-categories) |
 | Torrent Management | `addNewCategory` | [add-new-category](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#add-new-category) |
 | Torrent Management | `editCategory` | [edit-category](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#edit-category) |

@@ -7,6 +7,7 @@ import type { QBittorrent } from '@nqbt/core';
 import {
   addNewCategoryInputSchema,
   addNewMagnetInputSchema,
+  addPeersInputSchema,
   addNewTorrentInputSchema,
   addTorrentTagsInputSchema,
   addTrackersToTorrentInputSchema,
@@ -27,12 +28,15 @@ import {
   removeTrackersInputSchema,
   renamePathInputSchema,
   setApplicationPreferencesInputSchema,
+  setAutomaticTorrentManagementInputSchema,
   setCookiesInputSchema,
+  setTorrentBooleanStateInputSchema,
   setFilePriorityInputSchema,
   setTorrentCategoryInputSchema,
   setTorrentLimitInputSchema,
   setTorrentLocationInputSchema,
   setTorrentNameInputSchema,
+  setTorrentShareLimitsInputSchema,
   tagsInputSchema,
   torrentLimitInputSchema
 } from './schema.js';
@@ -453,6 +457,30 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
 
   registerToolWithArgs(
     server,
+    'add_peers',
+    'Add peers to a torrent.',
+    addPeersInputSchema,
+    async (args) => {
+      return qbittorrent.addPeers(args.hash, args.peers);
+    }
+  );
+
+  registerToolWithArgs(
+    server,
+    'set_torrent_share_limits',
+    'Set share limits for one or more torrents.',
+    setTorrentShareLimitsInputSchema,
+    async (args) => {
+      return qbittorrent.setTorrentShareLimits(args.hashes, {
+        ratioLimit: args.ratioLimit,
+        seedingTimeLimit: args.seedingTimeLimit,
+        inactiveSeedingTimeLimit: args.inactiveSeedingTimeLimit
+      });
+    }
+  );
+
+  registerToolWithArgs(
+    server,
     'increase_torrent_priority',
     'Increase queue priority for torrents.',
     hashesInputSchema,
@@ -568,6 +596,56 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
     setTorrentCategoryInputSchema,
     async (args) => {
       return qbittorrent.setTorrentCategory(args.hashes, args.category);
+    }
+  );
+
+  registerToolWithArgs(
+    server,
+    'set_automatic_torrent_management',
+    'Set automatic torrent management for torrents.',
+    setAutomaticTorrentManagementInputSchema,
+    async (args) => {
+      return qbittorrent.setAutomaticTorrentManagement(args.hashes, args.enable);
+    }
+  );
+
+  registerToolWithArgs(
+    server,
+    'toggle_sequential_download',
+    'Toggle sequential download for torrents.',
+    hashesInputSchema,
+    async (args) => {
+      return qbittorrent.toggleSequentialDownload(args.hashes);
+    }
+  );
+
+  registerToolWithArgs(
+    server,
+    'set_first_last_piece_priority',
+    'Toggle first/last piece priority for torrents.',
+    hashesInputSchema,
+    async (args) => {
+      return qbittorrent.setFirstLastPiecePriority(args.hashes);
+    }
+  );
+
+  registerToolWithArgs(
+    server,
+    'set_force_start',
+    'Set force-start state for torrents.',
+    setTorrentBooleanStateInputSchema,
+    async (args) => {
+      return qbittorrent.setForceStart(args.hashes, args.value);
+    }
+  );
+
+  registerToolWithArgs(
+    server,
+    'set_super_seeding',
+    'Set super-seeding state for torrents.',
+    setTorrentBooleanStateInputSchema,
+    async (args) => {
+      return qbittorrent.setSuperSeeding(args.hashes, args.value);
     }
   );
 

@@ -112,7 +112,21 @@ Support TypeScript API:
 | Application | `getApplicationPreferences` | [get-application-preferences](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-application-preferences) |
 | Application | `setApplicationPreferences` | [set-application-preferences](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-application-preferences) |
 | Application | `getDefaultSavePath` | [get-default-save-path](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-default-save-path) |
+| Application | `shutdownApplication` | [shutdown-application](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#shutdown-application) |
+| Application | `getCookies` | [get-cookies](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-cookies) |
+| Application | `setCookies` | [set-cookies](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-cookies) |
+| Log | `getLog` | [get-log](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-log) |
+| Log | `getPeerLog` | [get-peer-log](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-peer-log) |
+| Sync | `getMainData` | [get-main-data](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-main-data) |
 | Sync | `getTorrentPeersData` | [get-torrent-peers-data](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-peers-data) |
+| Transfer info | `getGlobalTransferInfo` | [get-global-transfer-info](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-global-transfer-info) |
+| Transfer info | `getAlternativeSpeedLimitsState` | [get-alternative-speed-limits-state](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-alternative-speed-limits-state) |
+| Transfer info | `toggleAlternativeSpeedLimits` | [toggle-alternative-speed-limits](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#toggle-alternative-speed-limits) |
+| Transfer info | `getGlobalDownloadLimit` | [get-global-download-limit](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-global-download-limit) |
+| Transfer info | `setGlobalDownloadLimit` | [set-global-download-limit](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-global-download-limit) |
+| Transfer info | `getGlobalUploadLimit` | [get-global-upload-limit](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-global-upload-limit) |
+| Transfer info | `setGlobalUploadLimit` | [set-global-upload-limit](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-global-upload-limit) |
+| Transfer info | `banPeers` | [ban-peers](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#ban-peers) |
 | Torrent Management | `getTorrentList` | [get-torrent-list](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-list) |
 | Torrent Management | `getTorrentGenericProperties` | [get-torrent-generic-properties](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-generic-properties) |
 | Torrent Management | `getTorrentTrackers` | [get-torrent-trackers](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-trackers) |
@@ -121,7 +135,7 @@ Support TypeScript API:
 | Torrent Management | `getTorrentPiecesStates` | [get-torrent-pieces-states](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-pieces-states) |
 | Torrent Management | `getTorrentPiecesHashes` | [get-torrent-pieces-hashes](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-pieces-hashes) |
 | Torrent Management | `stopTorrents` / `pauseTorrents` | [stop-torrents](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#stop-torrents) |
-| Torrent Management | `startTorrents` / `resumeTorrents` | [start-torrents](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#start-torrents) |
+| Torrent Management | `startTorrents` / `resumeTorrents` | [resume-torrents](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#resume-torrents) |
 | Torrent Management | `deleteTorrents` | [delete-torrents](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#delete-torrents) |
 | Torrent Management | `recheckTorrents` | [recheck-torrents](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#recheck-torrents) |
 | Torrent Management | `reannounceTorrents` | [reannounce-torrents](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#reannounce-torrents) |
@@ -129,11 +143,13 @@ Support TypeScript API:
 | Torrent Management | `removeTrackers` | [remove-trackers](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#remove-trackers) |
 | Torrent Management | `addNewTorrent` / `addNewMagnet` | [add-new-torrent](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#add-new-torrent) |
 | Torrent Management | `addTrackersToTorrent` | [add-trackers-to-torrent](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#add-trackers-to-torrent) |
+| Torrent Management | `addPeers` | [add-peers](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#add-peers) |
 | Torrent Management | `increaseTorrentPriority` | [increase-torrent-priority](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#increase-torrent-priority) |
 | Torrent Management | `decreaseTorrentPriority` | [decrease-torrent-priority](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#decrease-torrent-priority) |
 | Torrent Management | `maximalTorrentPriority` | [maximal-torrent-priority](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#maximal-torrent-priority) |
 | Torrent Management | `minimalTorrentPriority` | [minimal-torrent-priority](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#minimal-torrent-priority) |
 | Torrent Management | `setFilePriority` | [set-file-priority](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-file-priority) |
+| Torrent Management | `setTorrentShareLimits` | [set-torrent-share-limits](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-torrent-share-limits) |
 | Torrent Management | `getTorrentDownloadLimit` | [get-torrent-download-limit](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-download-limit) |
 | Torrent Management | `setTorrentDownloadLimit` | [set-torrent-download-limit](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-torrent-download-limit) |
 | Torrent Management | `getTorrentUploadLimit` | [get-torrent-upload-limit](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-upload-limit) |
@@ -141,6 +157,11 @@ Support TypeScript API:
 | Torrent Management | `setTorrentLocation` | [set-torrent-location](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-torrent-location) |
 | Torrent Management | `setTorrentName` | [set-torrent-name](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-torrent-name) |
 | Torrent Management | `setTorrentCategory` | [set-torrent-category](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-torrent-category) |
+| Torrent Management | `setAutomaticTorrentManagement` | [set-automatic-torrent-management](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-automatic-torrent-management) |
+| Torrent Management | `toggleSequentialDownload` | [toggle-sequential-download](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#toggle-sequential-download) |
+| Torrent Management | `setFirstLastPiecePriority` | [set-firstlast-piece-priority](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-firstlast-piece-priority) |
+| Torrent Management | `setForceStart` | [set-force-start](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-force-start) |
+| Torrent Management | `setSuperSeeding` | [set-super-seeding](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-super-seeding) |
 | Torrent Management | `getAllCategories` | [get-all-categories](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-all-categories) |
 | Torrent Management | `addNewCategory` | [add-new-category](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#add-new-category) |
 | Torrent Management | `editCategory` | [edit-category](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#edit-category) |

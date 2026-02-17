@@ -14,6 +14,7 @@ import type {
   Preferences,
   QbtCookie,
   QbtCookieInput,
+  SetTorrentShareLimitsOptions,
   Torrent,
   TorrentCategories,
   TorrentFile,
@@ -1036,6 +1037,59 @@ export class QBittorrent {
   }
 
   /**
+   * Add peers to a torrent.
+   * @param hash Torrent hash.
+   * @param peers Peer IP:port or multiple peers. Multiple values are joined by `|`.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#add-peers}
+   */
+  async addPeers(hash: string, peers: string | string[]): Promise<boolean> {
+    await this.request(
+      '/torrents/addPeers',
+      'POST',
+      undefined,
+      objToUrlSearchParams({
+        hash,
+        peers: normalizeList(peers, '|')
+      }),
+      undefined,
+      false
+    );
+    return true;
+  }
+
+  /**
+   * Set share limits for torrent(s).
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @param options Share-limit values.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-torrent-share-limits}
+   */
+  async setTorrentShareLimits(
+    hashes: string | string[] | 'all',
+    options: SetTorrentShareLimitsOptions
+  ): Promise<boolean> {
+    const data: Record<string, string> = {
+      hashes: normalizeHashes(hashes),
+      ratioLimit: `${options.ratioLimit}`,
+      seedingTimeLimit: `${options.seedingTimeLimit}`
+    };
+    if (options.inactiveSeedingTimeLimit !== undefined) {
+      data.inactiveSeedingTimeLimit = `${options.inactiveSeedingTimeLimit}`;
+    }
+
+    await this.request(
+      '/torrents/setShareLimits',
+      'POST',
+      undefined,
+      objToUrlSearchParams(data),
+      undefined,
+      false
+    );
+    return true;
+  }
+
+  /**
    * Increase queue priority of torrent(s) by one step.
    * @param hashes Torrent hash, multiple hashes, or `all`.
    * @returns `true` when request succeeds.
@@ -1289,6 +1343,115 @@ export class QBittorrent {
       'POST',
       undefined,
       objToUrlSearchParams(data),
+      undefined,
+      false
+    );
+    return true;
+  }
+
+  /**
+   * Set automatic torrent management state for torrent(s).
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @param enable Whether automatic torrent management should be enabled.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-automatic-torrent-management}
+   */
+  async setAutomaticTorrentManagement(
+    hashes: string | string[] | 'all',
+    enable: boolean
+  ): Promise<boolean> {
+    await this.request(
+      '/torrents/setAutoManagement',
+      'POST',
+      undefined,
+      objToUrlSearchParams({
+        hashes: normalizeHashes(hashes),
+        enable: `${enable}`
+      }),
+      undefined,
+      false
+    );
+    return true;
+  }
+
+  /**
+   * Toggle sequential download for torrent(s).
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#toggle-sequential-download}
+   */
+  async toggleSequentialDownload(hashes: string | string[] | 'all'): Promise<boolean> {
+    await this.request(
+      '/torrents/toggleSequentialDownload',
+      'POST',
+      undefined,
+      objToUrlSearchParams({
+        hashes: normalizeHashes(hashes)
+      }),
+      undefined,
+      false
+    );
+    return true;
+  }
+
+  /**
+   * Toggle first/last piece priority for torrent(s).
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-firstlast-piece-priority}
+   */
+  async setFirstLastPiecePriority(hashes: string | string[] | 'all'): Promise<boolean> {
+    await this.request(
+      '/torrents/toggleFirstLastPiecePrio',
+      'POST',
+      undefined,
+      objToUrlSearchParams({
+        hashes: normalizeHashes(hashes)
+      }),
+      undefined,
+      false
+    );
+    return true;
+  }
+
+  /**
+   * Set force-start state for torrent(s).
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @param value Force-start state.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-force-start}
+   */
+  async setForceStart(hashes: string | string[] | 'all', value: boolean): Promise<boolean> {
+    await this.request(
+      '/torrents/setForceStart',
+      'POST',
+      undefined,
+      objToUrlSearchParams({
+        hashes: normalizeHashes(hashes),
+        value: `${value}`
+      }),
+      undefined,
+      false
+    );
+    return true;
+  }
+
+  /**
+   * Set super-seeding state for torrent(s).
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @param value Super-seeding state.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-super-seeding}
+   */
+  async setSuperSeeding(hashes: string | string[] | 'all', value: boolean): Promise<boolean> {
+    await this.request(
+      '/torrents/setSuperSeeding',
+      'POST',
+      undefined,
+      objToUrlSearchParams({
+        hashes: normalizeHashes(hashes),
+        value: `${value}`
+      }),
       undefined,
       false
     );

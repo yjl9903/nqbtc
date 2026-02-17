@@ -167,6 +167,18 @@ export const addTrackersToTorrentInputSchema = z.object({
   urls: stringOrStringArraySchema
 });
 
+export const addPeersInputSchema = z.object({
+  hash: z.string(),
+  peers: stringOrStringArraySchema
+});
+
+export const setTorrentShareLimitsInputSchema = z.object({
+  hashes: hashesOrAllSchema,
+  ratioLimit: z.number(),
+  seedingTimeLimit: z.number().int(),
+  inactiveSeedingTimeLimit: z.number().int().optional()
+});
+
 export const setFilePriorityInputSchema = z.object({
   hash: z.string(),
   fileIds: stringOrStringArraySchema,
@@ -195,6 +207,16 @@ export const setTorrentNameInputSchema = z.object({
 export const setTorrentCategoryInputSchema = z.object({
   hashes: hashesOrAllSchema,
   category: z.string().optional()
+});
+
+export const setAutomaticTorrentManagementInputSchema = z.object({
+  hashes: hashesOrAllSchema,
+  enable: z.boolean()
+});
+
+export const setTorrentBooleanStateInputSchema = z.object({
+  hashes: hashesOrAllSchema,
+  value: z.boolean()
 });
 
 const categoryWithSavePathInputSchema = z.object({

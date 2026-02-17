@@ -324,6 +324,29 @@ export interface GetTorrentListOptions {
   includeTrackers?: boolean;
 }
 
+/**
+ * Payload for `POST /api/v2/torrents/setShareLimits`.
+ */
+export interface SetTorrentShareLimitsOptions {
+  /**
+   * Share ratio limit.
+   * `-2` means use global limit, `-1` means no limit.
+   */
+  ratioLimit: number;
+
+  /**
+   * Seeding time limit in minutes.
+   * `-2` means use global limit, `-1` means no limit.
+   */
+  seedingTimeLimit: number;
+
+  /**
+   * Inactive seeding time limit in minutes.
+   * `-2` means use global limit, `-1` means no limit.
+   */
+  inactiveSeedingTimeLimit?: number;
+}
+
 export interface Torrent {
   /**
    * Torrent name
