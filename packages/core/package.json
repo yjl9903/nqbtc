@@ -1,5 +1,5 @@
 {
-  "name": "@nqbt/node",
+  "name": "@nqbt/core",
   "version": "0.0.2",
   "description": "",
   "keywords": [],
@@ -20,7 +20,7 @@
       "import": "./dist/index.mjs"
     }
   },
-  "types": "dist/index.d.mts",
+  "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],

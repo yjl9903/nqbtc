@@ -16,14 +16,11 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "require": "./dist/index.cjs",
-      "import": "./dist/index.mjs",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
     }
   },
-  "main": "dist/index.cjs",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
+  "types": "dist/index.d.mts",
   "bin": {
     "nqbtc": "./cli.mjs"
   },
@@ -32,7 +29,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "unbuild",
+    "build": "tsdown",
     "format": "prettier --write src/**/*.ts test/**/*.ts",
     "test": "vitest",
     "test:ci": "vitest --run",
