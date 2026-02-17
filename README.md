@@ -5,12 +5,39 @@
 
 Run qBittorrent MCP server, and TypeScript qBittorrent WebUI API binding.
 
-## Use CLI
+## Use MCP server CLI
 
 Run qBittorrent MCP server.
 
+### Requirements
+
+- Node.js 24 or newer
+- qBittorrent and make sure WebUI enabled
+- Any MCP client
+
+### Getting started
+
+**Standard config** works in most of the tools (replace the `--base-url=...` with your real qBittorrent WebUI url).
+
+```json
+{
+  "mcpServers": {
+    "nqbtc": {
+      "command": "npx",
+      "args": [
+        "nqbtc",
+        "mcp",
+        "--base-url=http://localhost:9091/api/v2"
+      ]
+    }
+  }
+}
+```
+
+You can also config `username` and `password` like the following command.
+
 ```bash
-npx nqbtc mcp --base-url=http://localhost:9091/api/v2 --username xxx --password yyy
+npx nqbtc mcp --base-url=http://localhost:9091/api/v2 --username=xxx --password=yyy
 ```
 
 ## Use Client Library

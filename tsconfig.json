@@ -13,6 +13,17 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
+    "paths": {
+      "@nqbt/core": [
+        "./packages/core/src/index.ts"
+      ],
+      "@nqbt/node": [
+        "./packages/node/src/index.ts"
+      ],
+      "nqbt": [
+        "./packages/nqbt/src/index.ts"
+      ],
+    },
   },
   "exclude": [
     "node_modules"

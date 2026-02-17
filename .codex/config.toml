@@ -1,0 +1,3 @@
+# [mcp_servers.qbittorrent]
+# command = "node"
+# args = ["./packages/nqbtc/cli.mjs", "mcp", "--base-url=http://localhost:9091"]
