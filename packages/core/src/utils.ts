@@ -10,6 +10,17 @@ export function normalizeHashes(hashes: string | string[]): string {
   return hashes;
 }
 
+/**
+ * Normalize a single value or an array into a delimiter-joined string.
+ */
+export function normalizeList(values: string | string[], delimiter: string): string {
+  if (Array.isArray(values)) {
+    return values.join(delimiter);
+  }
+
+  return values;
+}
+
 export function objToUrlSearchParams(obj: Record<string, string | boolean>): URLSearchParams {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(obj)) {

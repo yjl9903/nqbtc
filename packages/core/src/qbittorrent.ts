@@ -1,12 +1,11 @@
 import { parse as cookieParse } from 'cookie';
-import { base64ToUint8Array } from 'uint8array-extras';
 
 import type {
-  AddMagnetOptions,
-  AddTorrentOptions,
+  AddNewMagnetOptions,
+  AddNewTorrentOptions,
   BuildInfo,
   DownloadSpeed,
-  ListTorrentsOptions,
+  GetTorrentListOptions,
   Preferences,
   Torrent,
   TorrentCategories,
@@ -20,53 +19,79 @@ import type {
   WebSeed
 } from './types.js';
 
-import { isGreater, joinURL, normalizeHashes, objToUrlSearchParams } from './utils.js';
+import {
+  isGreater,
+  joinURL,
+  normalizeHashes,
+  normalizeList,
+  objToUrlSearchParams
+} from './utils.js';
 
 type RequestInitWithDispatcher = RequestInit & {
   dispatcher?: unknown;
 };
 
 export interface QBittorrentClientState {
+  /**
+   * Runtime authentication state for WebUI requests.
+   */
   auth?: {
     /**
-     * auth cookie
+     * qBittorrent session id (`SID`) from `/auth/login`.
      */
     sid: string;
 
     /**
-     * cookie expiration
+     * Session expiration time derived from cookie attributes.
      */
     expires: Date;
   };
 
+  /**
+   * Cached server version information used for v4/v5 API compatibility handling.
+   */
   version?: {
-    version: string;
+    /**
+     * Raw application version returned by `/app/version`.
+     */
+    application: string;
 
+    /**
+     * `true` when server version is `>= 5.0.0`.
+     */
     isVersion5OrHigher: boolean;
   };
 }
 
 export interface QBittorrentClientConfig {
   /**
+   * WebUI API base URL.
    * @default 'http://localhost:9091/api/v2'
    */
   baseURL: string;
 
+  /**
+   * Username for `/auth/login`.
+   */
   username?: string;
 
+  /**
+   * Password for `/auth/login`.
+   */
   password?: string;
 
   /**
-   * Overwrite builtin fetch
+   * Override the built-in `fetch` implementation.
    */
   fetch?: typeof fetch;
 
   /**
-   * Pass custom dispatcher to fetch (e.g. undici proxy agent)
+   * Custom dispatcher passed to `fetch` (for example an undici proxy agent).
    */
   dispatcher?: RequestInitWithDispatcher['dispatcher'];
 
   /**
+   * Request timeout in milliseconds.
    * @default 5000
    */
   timeout?: number;
@@ -80,19 +105,115 @@ const defaults: QBittorrentClientConfig = {
 };
 
 export class QBittorrent {
+  /**
+   * Effective runtime configuration.
+   */
   public readonly config: QBittorrentClientConfig;
 
+  /**
+   * Mutable runtime state (auth and version cache).
+   */
   public readonly state: QBittorrentClientState = {};
 
+  /**
+   * Create a qBittorrent WebUI API client.
+   * @param config Partial client configuration merged with defaults.
+   */
   public constructor(config: Partial<QBittorrentClientConfig> = {}) {
     this.config = { ...defaults, ...config };
   }
 
+  // Authentication
+
   /**
-   * Get application version
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-application-version}
+   * Authenticate against qBittorrent WebUI and cache `SID` cookie.
+   * @returns `true` when authentication succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#login}
    */
-  async getAppVersion(): Promise<string> {
+  async login(): Promise<boolean> {
+    const url = joinURL(this.config.baseURL, '/auth/login');
+    const res = await this.fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        username: this.config.username ?? '',
+        password: this.config.password ?? ''
+      }).toString(),
+      redirect: 'manual'
+    });
+
+    const setCookies =
+      (
+        res.headers as Headers & {
+          getSetCookie?: () => string[];
+        }
+      ).getSetCookie?.() ?? [res.headers.get('set-cookie')].filter(Boolean);
+
+    const setCookie = setCookies.find((value) => value.includes('SID=')) ?? setCookies[0];
+
+    if (!setCookie) {
+      throw new Error('Cookie not found. Auth Failed.');
+    }
+
+    const cookie = cookieParse(setCookie);
+    if (!cookie.SID) {
+      throw new Error('Invalid cookie');
+    }
+
+    const expires = cookie.Expires ?? cookie.expires;
+    const maxAge = cookie['Max-Age'] ?? cookie['max-age'];
+    this.state.auth = {
+      sid: cookie.SID,
+      expires: expires
+        ? new Date(expires)
+        : maxAge
+          ? new Date(Date.now() + Number(maxAge) * 1000)
+          : new Date(Date.now() + 3_600_000)
+    };
+
+    // Check version after successful login
+    await this.checkVersion();
+
+    return true;
+  }
+
+  /**
+   * Log out from qBittorrent WebUI and clear `SID` cookie cache.
+   * @returns `true` when logout request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#logout}
+   */
+  async logout(): Promise<boolean> {
+    const sid = this.state.auth?.sid;
+
+    try {
+      if (sid) {
+        const url = joinURL(this.config.baseURL, '/auth/logout');
+        await this.fetch(url, {
+          method: 'POST',
+          headers: {
+            Cookie: `SID=${sid}`
+          }
+        });
+      }
+    } finally {
+      // Always clear local caches, even when remote logout fails.
+      delete this.state.auth;
+      delete this.state.version;
+    }
+
+    return true;
+  }
+
+  // Application
+
+  /**
+   * Get application version string.
+   * @returns Application version, for example `v5.0.5`.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-application-version}
+   */
+  async getApplicationVersion(): Promise<string> {
     const res = await this.request<string>(
       '/app/version',
       'GET',
@@ -105,7 +226,9 @@ export class QBittorrent {
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-api-version}
+   * Get supported WebUI API version.
+   * @returns WebUI API version, for example `2.11.2`.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-api-version}
    */
   async getApiVersion(): Promise<string> {
     const res = await this.request<string>(
@@ -120,8 +243,47 @@ export class QBittorrent {
   }
 
   /**
-   * Get default save path
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-default-save-path}
+   * Get qBittorrent build information.
+   * @returns Build metadata such as library versions and platform details.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-build-info}
+   */
+  async getBuildInfo(): Promise<BuildInfo> {
+    const res = await this.request<BuildInfo>('/app/buildInfo', 'GET');
+    return res;
+  }
+
+  /**
+   * Get current application preferences.
+   * @returns Full preference object from qBittorrent.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-application-preferences}
+   */
+  async getApplicationPreferences(): Promise<Preferences> {
+    const res = await this.request<Preferences>('/app/preferences', 'GET');
+    return res;
+  }
+
+  /**
+   * Update application preferences.
+   * @param preferences Partial preference object; only provided keys are updated.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-application-preferences}
+   */
+  async setApplicationPreferences(preferences: Partial<Preferences>): Promise<boolean> {
+    await this.request(
+      '/app/setPreferences',
+      'POST',
+      undefined,
+      objToUrlSearchParams({
+        json: JSON.stringify(preferences)
+      })
+    );
+    return true;
+  }
+
+  /**
+   * Get default torrent save path.
+   * @returns Absolute default save path configured in qBittorrent.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-default-save-path}
    */
   async getDefaultSavePath(): Promise<string> {
     const res = await this.request<string>(
@@ -135,109 +297,44 @@ export class QBittorrent {
     return res;
   }
 
+  // Sync
+
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-build-info}
+   * Get peer list and incremental peer updates for a torrent.
+   * @param hash Torrent hash.
+   * @param rid Response id for incremental sync. Omit or `0` for full response.
+   * @returns Peers payload with `full_update` flag and incremental changes.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-peers-data}
    */
-  async getBuildInfo(): Promise<BuildInfo> {
-    const res = await this.request<BuildInfo>('/app/buildInfo', 'GET');
+  async getTorrentPeersData(hash: string, rid?: number): Promise<TorrentPeersResponse> {
+    const params: { hash: string; rid?: number } = { hash };
+    if (rid) {
+      params.rid = rid;
+    }
+
+    const res = await this.request<TorrentPeersResponse>('/sync/torrentPeers', 'GET', params);
     return res;
   }
 
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-torrent-download-limit}
-   */
-  async getTorrentDownloadLimit(hash: string | string[]): Promise<DownloadSpeed> {
-    const downloadLimit = await this.request<DownloadSpeed>(
-      '/torrents/downloadLimit',
-      'POST',
-      undefined,
-      objToUrlSearchParams({
-        hashes: normalizeHashes(hash)
-      })
-    );
-    return downloadLimit;
-  }
+  // Torrent Management
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#set-torrent-download-limit}
+   * Get torrent list.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-list}
+   * @param options Query options.
+   * @param options.hashes Filter by torrent hashes (`|`-separated).
+   * @param options.filter State filter (v4 uses `paused`/`resumed`, v5 uses `stopped`/`running`; this client normalizes automatically).
+   * @param options.category Filter by category. Empty string means "without category".
+   * @param options.sort Sort field.
+   * @param options.offset Pagination offset.
+   * @param options.reverse Reverse sorting when `true`.
+   * @param options.tag Filter by tag.
+   * @param options.limit Maximum number of items to return.
+   * @param options.isPrivate Filter private torrents.
+   * @param options.includeTrackers Include tracker list in each torrent item (supported by newer API versions).
+   * @returns Torrent list.
    */
-  async setTorrentDownloadLimit(
-    hash: string | string[],
-    limitBytesPerSecond: number
-  ): Promise<boolean> {
-    const data = {
-      limit: limitBytesPerSecond.toString(),
-      hashes: normalizeHashes(hash)
-    };
-
-    await this.request('/torrents/setDownloadLimit', 'POST', undefined, objToUrlSearchParams(data));
-    return true;
-  }
-
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-torrent-upload-limit}
-   */
-  async getTorrentUploadLimit(hash: string | string[]): Promise<UploadSpeed> {
-    const UploadLimit = await this.request<UploadSpeed>(
-      '/torrents/uploadLimit',
-      'POST',
-      undefined,
-      objToUrlSearchParams({
-        hashes: normalizeHashes(hash)
-      })
-    );
-    return UploadLimit;
-  }
-
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#set-torrent-upload-limit}
-   */
-  async setTorrentUploadLimit(
-    hash: string | string[],
-    limitBytesPerSecond: number
-  ): Promise<boolean> {
-    const data = {
-      limit: limitBytesPerSecond.toString(),
-      hashes: normalizeHashes(hash)
-    };
-
-    await this.request('/torrents/setUploadLimit', 'POST', undefined, objToUrlSearchParams(data));
-    return true;
-  }
-
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-application-preferences}
-   */
-  async getPreferences(): Promise<Preferences> {
-    const res = await this.request<Preferences>('/app/preferences', 'GET');
-    return res;
-  }
-
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#set-application-preferences}
-   */
-  async setPreferences(preferences: Partial<Preferences>): Promise<boolean> {
-    await this.request(
-      '/app/setPreferences',
-      'POST',
-      undefined,
-      objToUrlSearchParams({
-        json: JSON.stringify(preferences)
-      })
-    );
-    return true;
-  }
-
-  /**
-   * Torrents list
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-torrent-list}
-   * @param options List query options
-   * @param options.hashes Filter by torrent hashes
-   * @param options.filter Filter torrent list
-   * @param options.category Get torrents with the given category (empty string means "without category"; no "category" parameter means "any category")
-   * @returns list of torrents
-   */
-  async listTorrents({
+  async getTorrentList({
     hashes,
     filter,
     category,
@@ -248,7 +345,7 @@ export class QBittorrent {
     limit,
     isPrivate,
     includeTrackers
-  }: ListTorrentsOptions = {}): Promise<Torrent[]> {
+  }: GetTorrentListOptions = {}): Promise<Torrent[]> {
     const params: Record<string, string> = {};
     if (hashes) {
       params.hashes = normalizeHashes(hashes);
@@ -309,47 +406,389 @@ export class QBittorrent {
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-torrent-generic-properties}
+   * Get generic torrent properties.
+   * @param hash Torrent hash.
+   * @returns Generic torrent metadata and statistics.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-generic-properties}
    */
-  async torrentProperties(hash: string): Promise<TorrentProperties> {
+  async getTorrentGenericProperties(hash: string): Promise<TorrentProperties> {
     const res = await this.request<TorrentProperties>('/torrents/properties', 'GET', { hash });
     return res;
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-torrent-trackers}
+   * Get tracker list of a torrent.
+   * @param hash Torrent hash.
+   * @returns Trackers attached to the torrent.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-trackers}
    */
-  async torrentTrackers(hash: string): Promise<TorrentTrackers[]> {
+  async getTorrentTrackers(hash: string): Promise<TorrentTrackers[]> {
     const res = await this.request<TorrentTrackers[]>('/torrents/trackers', 'GET', { hash });
     return res;
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-torrent-web-seeds}
+   * Get web seed list of a torrent.
+   * @param hash Torrent hash.
+   * @returns Web seeds attached to the torrent.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-web-seeds}
    */
-  async torrentWebSeeds(hash: string): Promise<WebSeed[]> {
+  async getTorrentWebSeeds(hash: string): Promise<WebSeed[]> {
     const res = await this.request<WebSeed[]>('/torrents/webseeds', 'GET', { hash });
     return res;
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-torrent-contents}
+   * Get file list of a torrent.
+   * @param hash Torrent hash.
+   * @returns Files contained in the torrent.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-contents}
    */
-  async torrentFiles(hash: string): Promise<TorrentFile[]> {
+  async getTorrentContents(hash: string): Promise<TorrentFile[]> {
     const res = await this.request<TorrentFile[]>('/torrents/files', 'GET', { hash });
     return res;
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-torrent-pieces-states}
+   * Get state of each piece in a torrent.
+   * @param hash Torrent hash.
+   * @returns Piece states in piece order.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-pieces-states}
    */
-  async torrentPieceStates(hash: string): Promise<TorrentPieceState[]> {
+  async getTorrentPiecesStates(hash: string): Promise<TorrentPieceState[]> {
     const res = await this.request<TorrentPieceState[]>('/torrents/pieceStates', 'GET', { hash });
     return res;
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#set-file-priority}
+   * Get hashes for all pieces of a torrent.
+   * @param hash Torrent hash.
+   * @returns Piece hashes in piece order.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-pieces-hashes}
+   */
+  async getTorrentPiecesHashes(hash: string): Promise<string[]> {
+    const res = await this.request<string[]>('/torrents/pieceHashes', 'GET', { hash });
+    return res;
+  }
+
+  /**
+   * Stop/pause torrent(s).
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @returns `true` when request succeeds.
+   * @remarks Uses `/torrents/stop` on qBittorrent v5+, falls back to `/torrents/pause` for older versions.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#stop-torrents}
+   */
+  async stopTorrents(hashes: string | string[] | 'all'): Promise<boolean> {
+    const endpoint = this.state.version?.isVersion5OrHigher ? '/torrents/stop' : '/torrents/pause';
+    const data = { hashes: normalizeHashes(hashes) };
+    await this.request(endpoint, 'POST', undefined, objToUrlSearchParams(data));
+    return true;
+  }
+
+  /**
+   * Stop/pause torrent(s).
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @returns `true` when request succeeds.
+   * @remarks Uses `/torrents/stop` on qBittorrent v5+, falls back to `/torrents/pause` for older versions.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#stop-torrents}
+   */
+  async pauseTorrents(hashes: string | string[] | 'all'): Promise<boolean> {
+    return this.stopTorrents(hashes);
+  }
+
+  /**
+   * Start/resume torrent(s).
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @returns `true` when request succeeds.
+   * @remarks Uses `/torrents/start` on qBittorrent v5+, falls back to `/torrents/resume` for older versions.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#start-torrents}
+   */
+  async startTorrents(hashes: string | string[] | 'all'): Promise<boolean> {
+    const endpoint = this.state.version?.isVersion5OrHigher
+      ? '/torrents/start'
+      : '/torrents/resume';
+    const data = { hashes: normalizeHashes(hashes) };
+    await this.request(endpoint, 'POST', undefined, objToUrlSearchParams(data));
+    return true;
+  }
+
+  /**
+   * Start/resume torrent(s).
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @returns `true` when request succeeds.
+   * @remarks Uses `/torrents/start` on qBittorrent v5+, falls back to `/torrents/resume` for older versions.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#start-torrents}
+   */
+  async resumeTorrents(hashes: string | string[] | 'all'): Promise<boolean> {
+    return this.startTorrents(hashes);
+  }
+
+  /**
+   * Delete torrent(s) from client.
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @param deleteFiles When `true`, delete downloaded data from disk as well.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#delete-torrents}
+   */
+  async deleteTorrents(hashes: string | string[] | 'all', deleteFiles = false): Promise<boolean> {
+    const data = {
+      hashes: normalizeHashes(hashes),
+      deleteFiles
+    };
+    await this.request(
+      '/torrents/delete',
+      'POST',
+      undefined,
+      objToUrlSearchParams(data),
+      undefined,
+      false
+    );
+    return true;
+  }
+
+  /**
+   * Force recheck torrent data.
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#recheck-torrents}
+   */
+  async recheckTorrents(hashes: string | string[] | 'all'): Promise<boolean> {
+    const data = { hashes: normalizeHashes(hashes) };
+    await this.request('/torrents/recheck', 'POST', undefined, objToUrlSearchParams(data));
+    return true;
+  }
+
+  /**
+   * Reannounce torrent(s) to tracker(s).
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#reannounce-torrents}
+   */
+  async reannounceTorrents(hashes: string | string[] | 'all'): Promise<boolean> {
+    const data = { hashes: normalizeHashes(hashes) };
+    await this.request('/torrents/reannounce', 'POST', undefined, objToUrlSearchParams(data));
+    return true;
+  }
+
+  /**
+   * Edit a tracker URL for a torrent.
+   * @param hash Torrent hash.
+   * @param origUrl Existing tracker URL.
+   * @param newUrl New tracker URL.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#edit-trackers}
+   */
+  async editTrackers(hash: string, origUrl: string, newUrl: string): Promise<boolean> {
+    const data = { hash, origUrl, newUrl };
+    await this.request('/torrents/editTrackers', 'POST', undefined, objToUrlSearchParams(data));
+    return true;
+  }
+
+  /**
+   * Remove trackers from a torrent.
+   * @param hash Torrent hash.
+   * @param urls Tracker URL or multiple tracker URLs. Multiple values are joined by `|`.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#remove-trackers}
+   */
+  async removeTrackers(hash: string, urls: string | string[]): Promise<boolean> {
+    const data = { hash, urls: normalizeList(urls, '|') };
+    await this.request('/torrents/removeTrackers', 'POST', undefined, objToUrlSearchParams(data));
+    return true;
+  }
+
+  /**
+   * Add a torrent from raw `.torrent` data.
+   * @param torrent Binary torrent bytes.
+   * @param options Optional add-torrent form fields from WebUI API.
+   * @returns `true` when torrent is accepted by qBittorrent.
+   * @remarks On qBittorrent v5+, the API uses `stopped` instead of `paused`; this client maps automatically.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#add-new-torrent}
+   */
+  async addNewTorrent(
+    torrent: Uint8Array<ArrayBuffer>,
+    options: Partial<AddNewTorrentOptions> = {}
+  ): Promise<boolean> {
+    const form = new FormData();
+
+    // remove options.filename, not used in form
+    if (options.filename) {
+      delete options.filename;
+    }
+
+    const type = { type: 'application/x-bittorrent' };
+    const file = new File([torrent], options.filename ?? 'torrent', type);
+    form.set('file', file);
+
+    if (options) {
+      // Handle version-specific paused/stopped parameter
+      if (this.state.version?.isVersion5OrHigher && options.paused !== undefined) {
+        if (options.stopped === undefined) {
+          options.stopped = options.paused;
+        }
+        delete options.paused;
+      }
+
+      if (Array.isArray(options.tags)) {
+        options.tags = normalizeList(options.tags, ',');
+      }
+
+      // disable savepath when autoTMM is defined
+      if (options.useAutoTMM === true) {
+        options.savepath = '';
+      }
+
+      for (const [key, value] of Object.entries(options)) {
+        if (value === undefined || value === null) {
+          continue;
+        }
+        form.append(key, `${value}`);
+      }
+    }
+
+    const res = await this.request<string>(
+      '/torrents/add',
+      'POST',
+      undefined,
+      form,
+      undefined,
+      false
+    );
+
+    if (res === 'Fails.') {
+      throw new Error('Failed to add torrent');
+    }
+
+    return true;
+  }
+
+  /**
+   * Add torrent(s) by magnet URL(s).
+   * @param urls Magnet URL or multiple magnet URLs.
+   * Multiple values are joined by newline characters.
+   * @param options Optional add-torrent form fields from WebUI API.
+   * @returns `true` when torrent(s) are accepted by qBittorrent.
+   * @remarks On qBittorrent v5+, the API uses `stopped` instead of `paused`; this client maps automatically.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#add-new-torrent}
+   */
+  async addNewMagnet(
+    urls: string | string[],
+    options: Partial<AddNewMagnetOptions> = {}
+  ): Promise<boolean> {
+    const form = new FormData();
+    form.append('urls', normalizeList(urls, '\n'));
+
+    if (options) {
+      // Handle version-specific paused/stopped parameter
+      if (this.state.version?.isVersion5OrHigher && options.paused !== undefined) {
+        if (options.stopped === undefined) {
+          options.stopped = options.paused;
+        }
+        delete options.paused;
+      }
+
+      if (Array.isArray(options.tags)) {
+        options.tags = normalizeList(options.tags, ',');
+      }
+
+      // disable savepath when autoTMM is defined
+      if (options.useAutoTMM === true) {
+        options.savepath = '';
+      }
+
+      for (const [key, value] of Object.entries(options)) {
+        if (value === undefined || value === null) {
+          continue;
+        }
+        form.append(key, `${value}`);
+      }
+    }
+
+    const res = await this.request<string>(
+      '/torrents/add',
+      'POST',
+      undefined,
+      form,
+      undefined,
+      false
+    );
+
+    if (res === 'Fails.') {
+      throw new Error('Failed to add torrent');
+    }
+
+    return true;
+  }
+
+  /**
+   * Add trackers to a torrent.
+   * @param hash Torrent hash.
+   * @param urls Tracker URL or multiple tracker URLs.
+   * Multiple values are joined by newline characters.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#add-trackers-to-torrent}
+   */
+  async addTrackersToTorrent(hash: string, urls: string | string[]): Promise<boolean> {
+    const data = { hash, urls: normalizeList(urls, '\n') };
+    await this.request('/torrents/addTrackers', 'POST', undefined, objToUrlSearchParams(data));
+    return true;
+  }
+
+  /**
+   * Increase queue priority of torrent(s) by one step.
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#increase-torrent-priority}
+   */
+  async increaseTorrentPriority(hashes: string | string[] | 'all'): Promise<boolean> {
+    const data = { hashes: normalizeHashes(hashes) };
+    await this.request('/torrents/increasePrio', 'POST', undefined, objToUrlSearchParams(data));
+    return true;
+  }
+
+  /**
+   * Decrease queue priority of torrent(s) by one step.
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#decrease-torrent-priority}
+   */
+  async decreaseTorrentPriority(hashes: string | string[] | 'all'): Promise<boolean> {
+    const data = { hashes: normalizeHashes(hashes) };
+    await this.request('/torrents/decreasePrio', 'POST', undefined, objToUrlSearchParams(data));
+    return true;
+  }
+
+  /**
+   * Move torrent(s) to the top of queue priority.
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#maximal-torrent-priority}
+   */
+  async maximalTorrentPriority(hashes: string | string[] | 'all'): Promise<boolean> {
+    const data = { hashes: normalizeHashes(hashes) };
+    await this.request('/torrents/topPrio', 'POST', undefined, objToUrlSearchParams(data));
+    return true;
+  }
+
+  /**
+   * Move torrent(s) to the bottom of queue priority.
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#minimal-torrent-priority}
+   */
+  async minimalTorrentPriority(hashes: string | string[] | 'all'): Promise<boolean> {
+    const data = { hashes: normalizeHashes(hashes) };
+    await this.request('/torrents/bottomPrio', 'POST', undefined, objToUrlSearchParams(data));
+    return true;
+  }
+
+  /**
+   * Set one or more file priorities inside a torrent.
+   * @param hash Torrent hash.
+   * @param fileIds File index/id or multiple ids.
+   * @param priority Target file priority.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-file-priority}
    */
   async setFilePriority(
     hash: string,
@@ -372,17 +811,87 @@ export class QBittorrent {
   }
 
   /**
-   * Torrents piece hashes
-   * @returns an array of hashes (strings) of all pieces (in order) of a specific torrent
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-torrent-pieces-hashes}
+   * Get per-torrent download speed limit(s).
+   * @param hash Torrent hash or multiple torrent hashes.
+   * @returns Mapping from torrent hash to limit in bytes/second (0 means unlimited).
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-download-limit}
    */
-  async torrentPieceHashes(hash: string): Promise<string[]> {
-    const res = await this.request<string[]>('/torrents/pieceHashes', 'GET', { hash });
-    return res;
+  async getTorrentDownloadLimit(hash: string | string[]): Promise<DownloadSpeed> {
+    const downloadLimit = await this.request<DownloadSpeed>(
+      '/torrents/downloadLimit',
+      'POST',
+      undefined,
+      objToUrlSearchParams({
+        hashes: normalizeHashes(hash)
+      })
+    );
+    return downloadLimit;
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#set-torrent-location}
+   * Set per-torrent download speed limit.
+   * @param hash Torrent hash or multiple torrent hashes.
+   * @param limitBytesPerSecond Limit in bytes/second (`0` means unlimited).
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-torrent-download-limit}
+   */
+  async setTorrentDownloadLimit(
+    hash: string | string[],
+    limitBytesPerSecond: number
+  ): Promise<boolean> {
+    const data = {
+      limit: limitBytesPerSecond.toString(),
+      hashes: normalizeHashes(hash)
+    };
+
+    await this.request('/torrents/setDownloadLimit', 'POST', undefined, objToUrlSearchParams(data));
+    return true;
+  }
+
+  /**
+   * Get per-torrent upload speed limit(s).
+   * @param hash Torrent hash or multiple torrent hashes.
+   * @returns Mapping from torrent hash to limit in bytes/second (0 means unlimited).
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-torrent-upload-limit}
+   */
+  async getTorrentUploadLimit(hash: string | string[]): Promise<UploadSpeed> {
+    const UploadLimit = await this.request<UploadSpeed>(
+      '/torrents/uploadLimit',
+      'POST',
+      undefined,
+      objToUrlSearchParams({
+        hashes: normalizeHashes(hash)
+      })
+    );
+    return UploadLimit;
+  }
+
+  /**
+   * Set per-torrent upload speed limit.
+   * @param hash Torrent hash or multiple torrent hashes.
+   * @param limitBytesPerSecond Limit in bytes/second (`0` means unlimited).
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-torrent-upload-limit}
+   */
+  async setTorrentUploadLimit(
+    hash: string | string[],
+    limitBytesPerSecond: number
+  ): Promise<boolean> {
+    const data = {
+      limit: limitBytesPerSecond.toString(),
+      hashes: normalizeHashes(hash)
+    };
+
+    await this.request('/torrents/setUploadLimit', 'POST', undefined, objToUrlSearchParams(data));
+    return true;
+  }
+
+  /**
+   * Set save location for torrent data.
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @param location Target absolute path.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-torrent-location}
    */
   async setTorrentLocation(hashes: string | string[] | 'all', location: string): Promise<boolean> {
     const data = {
@@ -394,7 +903,11 @@ export class QBittorrent {
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#set-torrent-name}
+   * Rename a torrent.
+   * @param hash Torrent hash.
+   * @param name New torrent name.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-torrent-name}
    */
   async setTorrentName(hash: string, name: string): Promise<boolean> {
     const data = { hash, name };
@@ -403,59 +916,39 @@ export class QBittorrent {
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-all-tags}
+   * Set category for torrent(s).
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @param category Category name. Empty string removes category assignment.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-torrent-category}
    */
-  async getTags(): Promise<string[]> {
-    const res = await this.request<string[]>('/torrents/tags', 'GET');
-    return res;
-  }
-
-  /**
-   * @param tags comma separated list
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#create-tags}
-   */
-  async createTags(tags: string): Promise<boolean> {
-    const data = { tags };
-    await this.request(
-      '/torrents/createTags',
-      'POST',
-      undefined,
-      objToUrlSearchParams(data),
-      undefined,
-      false
-    );
+  async setTorrentCategory(hashes: string | string[] | 'all', category = ''): Promise<boolean> {
+    const data = {
+      hashes: normalizeHashes(hashes),
+      category
+    };
+    await this.request('/torrents/setCategory', 'POST', undefined, objToUrlSearchParams(data));
     return true;
   }
 
   /**
-   * @param tags comma separated list
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#delete-tags}
+   * Get all existing categories.
+   * @returns Category map keyed by category name.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-all-categories}
    */
-  async deleteTags(tags: string): Promise<boolean> {
-    const data = { tags };
-    await this.request(
-      '/torrents/deleteTags',
-      'POST',
-      undefined,
-      objToUrlSearchParams(data),
-      undefined,
-      false
-    );
-    return true;
-  }
-
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-all-categories}
-   */
-  async getCategories(): Promise<TorrentCategories> {
+  async getAllCategories(): Promise<TorrentCategories> {
     const res = await this.request<TorrentCategories>('/torrents/categories', 'GET');
     return res;
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#add-new-category}
+   * Create a new category.
+   * @param category Category name.
+   * @param savePath Default save path for this category. Empty string keeps default behavior.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#add-new-category}
    */
-  async createCategory(category: string, savePath = ''): Promise<boolean> {
+  async addNewCategory(category: string, savePath = ''): Promise<boolean> {
     const data = { category, savePath };
     await this.request(
       '/torrents/createCategory',
@@ -469,7 +962,11 @@ export class QBittorrent {
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#edit-category}
+   * Edit category default save path.
+   * @param category Category name.
+   * @param savePath New default save path.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#edit-category}
    */
   async editCategory(category: string, savePath = ''): Promise<boolean> {
     const data = { category, savePath };
@@ -485,10 +982,14 @@ export class QBittorrent {
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#remove-categories}
+   * Remove one or more categories.
+   * @param categories Category name or multiple category names.
+   * Multiple values are joined by newline characters.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#remove-categories}
    */
-  async removeCategory(categories: string): Promise<boolean> {
-    const data = { categories };
+  async removeCategories(categories: string | string[]): Promise<boolean> {
+    const data = { categories: normalizeList(categories, '\n') };
     await this.request(
       '/torrents/removeCategories',
       'POST',
@@ -501,10 +1002,18 @@ export class QBittorrent {
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#add-torrent-tags}
+   * Add tags to torrent(s).
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @param tags Tag name or multiple tag names.
+   * Multiple values are joined by commas.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#add-torrent-tags}
    */
-  async addTorrentTags(hashes: string | string[] | 'all', tags: string): Promise<boolean> {
-    const data = { hashes: normalizeHashes(hashes), tags };
+  async addTorrentTags(
+    hashes: string | string[] | 'all',
+    tags: string | string[]
+  ): Promise<boolean> {
+    const data = { hashes: normalizeHashes(hashes), tags: normalizeList(tags, ',') };
     await this.request(
       '/torrents/addTags',
       'POST',
@@ -517,13 +1026,20 @@ export class QBittorrent {
   }
 
   /**
-   * if tags are not passed, removes all tags
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#remove-torrent-tags}
+   * Remove tags from torrent(s).
+   * @param hashes Torrent hash, multiple hashes, or `all`.
+   * @param tags Tag name or multiple tag names. Omit to remove all tags.
+   * Multiple values are joined by commas.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#remove-torrent-tags}
    */
-  async removeTorrentTags(hashes: string | string[] | 'all', tags?: string): Promise<boolean> {
+  async removeTorrentTags(
+    hashes: string | string[] | 'all',
+    tags?: string | string[]
+  ): Promise<boolean> {
     const data: Record<string, string> = { hashes: normalizeHashes(hashes) };
-    if (tags) {
-      data.tags = tags;
+    if (tags !== undefined) {
+      data.tags = normalizeList(tags, ',');
     }
 
     await this.request(
@@ -538,50 +1054,26 @@ export class QBittorrent {
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#set-torrent-category}
+   * Get all existing torrent tags.
+   * @returns Tag names.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-all-tags}
    */
-  async setTorrentCategory(hashes: string | string[] | 'all', category = ''): Promise<boolean> {
-    const data = {
-      hashes: normalizeHashes(hashes),
-      category
-    };
-    await this.request('/torrents/setCategory', 'POST', undefined, objToUrlSearchParams(data));
-    return true;
+  async getAllTags(): Promise<string[]> {
+    const res = await this.request<string[]>('/torrents/tags', 'GET');
+    return res;
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#pause-torrents}
+   * Create one or more tags.
+   * @param tags Tag name or multiple tag names.
+   * Multiple values are joined by commas.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#create-tags}
    */
-  async stopTorrent(hashes: string | string[] | 'all'): Promise<boolean> {
-    const endpoint = this.state.version?.isVersion5OrHigher ? '/torrents/stop' : '/torrents/pause';
-    const data = { hashes: normalizeHashes(hashes) };
-    await this.request(endpoint, 'POST', undefined, objToUrlSearchParams(data));
-    return true;
-  }
-
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#resume-torrents}
-   */
-  async startTorrent(hashes: string | string[] | 'all'): Promise<boolean> {
-    const endpoint = this.state.version?.isVersion5OrHigher
-      ? '/torrents/start'
-      : '/torrents/resume';
-    const data = { hashes: normalizeHashes(hashes) };
-    await this.request(endpoint, 'POST', undefined, objToUrlSearchParams(data));
-    return true;
-  }
-
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#delete-torrents}
-   * @param deleteFiles (default: false) remove files from disk
-   */
-  async removeTorrent(hashes: string | string[] | 'all', deleteFiles = false): Promise<boolean> {
-    const data = {
-      hashes: normalizeHashes(hashes),
-      deleteFiles
-    };
+  async createTags(tags: string | string[]): Promise<boolean> {
+    const data = { tags: normalizeList(tags, ',') };
     await this.request(
-      '/torrents/delete',
+      '/torrents/createTags',
       'POST',
       undefined,
       objToUrlSearchParams(data),
@@ -592,81 +1084,32 @@ export class QBittorrent {
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#recheck-torrents}
+   * Delete one or more tags.
+   * @param tags Tag name or multiple tag names.
+   * Multiple values are joined by commas.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#delete-tags}
    */
-  async recheckTorrent(hashes: string | string[] | 'all'): Promise<boolean> {
-    const data = { hashes: normalizeHashes(hashes) };
-    await this.request('/torrents/recheck', 'POST', undefined, objToUrlSearchParams(data));
-    return true;
-  }
-
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#reannounce-torrents}
-   */
-  async reannounceTorrent(hashes: string | string[] | 'all'): Promise<boolean> {
-    const data = { hashes: normalizeHashes(hashes) };
-    await this.request('/torrents/reannounce', 'POST', undefined, objToUrlSearchParams(data));
-    return true;
-  }
-
-  async addTorrent(
-    torrent: string | Uint8Array<ArrayBuffer>,
-    options: Partial<AddTorrentOptions> = {}
-  ): Promise<boolean> {
-    const form = new FormData();
-
-    // remove options.filename, not used in form
-    if (options.filename) {
-      delete options.filename;
-    }
-
-    const type = { type: 'application/x-bittorrent' };
-    if (typeof torrent === 'string') {
-      form.set('file', new File([base64ToUint8Array(torrent)], 'file.torrent', type));
-    } else {
-      const file = new File([torrent], options.filename ?? 'torrent', type);
-      form.set('file', file);
-    }
-
-    if (options) {
-      // Handle version-specific paused/stopped parameter
-      if (this.state.version?.isVersion5OrHigher && 'paused' in options) {
-        form.append('stopped', options.paused!);
-        delete options.paused;
-      }
-
-      // disable savepath when autoTMM is defined
-      if (options.useAutoTMM === 'true') {
-        options.savepath = '';
-      } else {
-        options.useAutoTMM = 'false';
-      }
-
-      for (const [key, value] of Object.entries(options)) {
-        form.append(key, `${value}`);
-      }
-    }
-
-    const res = await this.request<string>(
-      '/torrents/add',
+  async deleteTags(tags: string | string[]): Promise<boolean> {
+    const data = { tags: normalizeList(tags, ',') };
+    await this.request(
+      '/torrents/deleteTags',
       'POST',
       undefined,
-      form,
+      objToUrlSearchParams(data),
       undefined,
       false
     );
-
-    if (res === 'Fails.') {
-      throw new Error('Failed to add torrent');
-    }
-
     return true;
   }
 
   /**
-   * @param hash Hash for desired torrent
-   * @param oldPath id of the file to be renamed
-   * @param newPath new name to be assigned to the file
+   * Rename a file inside a torrent.
+   * @param hash Torrent hash.
+   * @param oldPath Existing file path inside the torrent.
+   * @param newPath New file path inside the torrent.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#rename-file}
    */
   async renameFile(hash: string, oldPath: string, newPath: string): Promise<boolean> {
     await this.request<string>(
@@ -686,7 +1129,12 @@ export class QBittorrent {
   }
 
   /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#rename-folder}
+   * Rename a folder inside a torrent.
+   * @param hash Torrent hash.
+   * @param oldPath Existing folder path inside the torrent.
+   * @param newPath New folder path inside the torrent.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#rename-folder}
    */
   async renameFolder(hash: string, oldPath: string, newPath: string): Promise<boolean> {
     await this.request<string>(
@@ -706,184 +1154,17 @@ export class QBittorrent {
   }
 
   /**
-   * @param urls URLs separated with newlines
-   * @param options
+   * Execute an authenticated WebUI API request.
+   * @typeParam T Expected response type.
+   * @param path API path relative to `baseURL`.
+   * @param method HTTP method.
+   * @param params Query string parameters.
+   * @param body Request body for `POST` endpoints.
+   * @param headers Additional request headers.
+   * @param isJson When `true`, parse response as JSON; otherwise return plain text.
+   * @returns Parsed response payload.
    */
-  async addMagnet(urls: string, options: Partial<AddMagnetOptions> = {}): Promise<boolean> {
-    const form = new FormData();
-    form.append('urls', urls);
-
-    if (options) {
-      // Handle version-specific paused/stopped parameter
-      if (this.state.version?.isVersion5OrHigher && 'paused' in options) {
-        form.append('stopped', options.paused!);
-        delete options.paused;
-      }
-
-      // disable savepath when autoTMM is defined
-      if (options.useAutoTMM === 'true') {
-        options.savepath = '';
-      } else {
-        options.useAutoTMM = 'false';
-      }
-
-      for (const [key, value] of Object.entries(options)) {
-        form.append(key, `${value}`);
-      }
-    }
-
-    const res = await this.request<string>(
-      '/torrents/add',
-      'POST',
-      undefined,
-      form,
-      undefined,
-      false
-    );
-
-    if (res === 'Fails.') {
-      throw new Error('Failed to add torrent');
-    }
-
-    return true;
-  }
-
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#add-trackers-to-torrent}
-   */
-  async addTrackers(hash: string, urls: string): Promise<boolean> {
-    const data = { hash, urls };
-    await this.request('/torrents/addTrackers', 'POST', undefined, objToUrlSearchParams(data));
-    return true;
-  }
-
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#edit-trackers}
-   */
-  async editTrackers(hash: string, origUrl: string, newUrl: string): Promise<boolean> {
-    const data = { hash, origUrl, newUrl };
-    await this.request('/torrents/editTrackers', 'POST', undefined, objToUrlSearchParams(data));
-    return true;
-  }
-
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#remove-trackers}
-   */
-  async removeTrackers(hash: string, urls: string): Promise<boolean> {
-    const data = { hash, urls };
-    await this.request('/torrents/removeTrackers', 'POST', undefined, objToUrlSearchParams(data));
-    return true;
-  }
-
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#increase-torrent-priority}
-   */
-  async queueUp(hashes: string | string[] | 'all'): Promise<boolean> {
-    const data = { hashes: normalizeHashes(hashes) };
-    await this.request('/torrents/increasePrio', 'POST', undefined, objToUrlSearchParams(data));
-    return true;
-  }
-
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#decrease-torrent-priority}
-   */
-  async queueDown(hashes: string | string[] | 'all'): Promise<boolean> {
-    const data = { hashes: normalizeHashes(hashes) };
-    await this.request('/torrents/decreasePrio', 'POST', undefined, objToUrlSearchParams(data));
-    return true;
-  }
-
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#maximal-torrent-priority}
-   */
-  async topPriority(hashes: string | string[] | 'all'): Promise<boolean> {
-    const data = { hashes: normalizeHashes(hashes) };
-    await this.request('/torrents/topPrio', 'POST', undefined, objToUrlSearchParams(data));
-    return true;
-  }
-
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#minimal-torrent-priority}
-   */
-  async bottomPriority(hashes: string | string[] | 'all'): Promise<boolean> {
-    const data = { hashes: normalizeHashes(hashes) };
-    await this.request('/torrents/bottomPrio', 'POST', undefined, objToUrlSearchParams(data));
-    return true;
-  }
-
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#get-torrent-peers-data}
-   * @param rid - Response ID. If not provided, rid=0 will be assumed. If the given rid is
-   *  different from the one of last server reply, full_update will be true (see the server reply details for more info)
-   */
-  async torrentPeers(hash: string, rid?: number): Promise<TorrentPeersResponse> {
-    const params: { hash: string; rid?: number } = { hash };
-    if (rid) {
-      params.rid = rid;
-    }
-
-    const res = await this.request<TorrentPeersResponse>('/sync/torrentPeers', 'GET', params);
-    return res;
-  }
-
-  /**
-   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)#login}
-   */
-  async login(): Promise<boolean> {
-    const url = joinURL(this.config.baseURL, '/auth/login');
-    const res = await this.fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: new URLSearchParams({
-        username: this.config.username ?? '',
-        password: this.config.password ?? ''
-      }).toString(),
-      redirect: 'manual'
-    });
-
-    const setCookies =
-      (
-        res.headers as Headers & {
-          getSetCookie?: () => string[];
-        }
-      ).getSetCookie?.() ?? [res.headers.get('set-cookie')].filter(Boolean);
-    const setCookie = setCookies.find((value) => value.includes('SID=')) ?? setCookies[0];
-
-    if (!setCookie) {
-      throw new Error('Cookie not found. Auth Failed.');
-    }
-
-    const cookie = cookieParse(setCookie);
-    if (!cookie.SID) {
-      throw new Error('Invalid cookie');
-    }
-
-    const expires = cookie.Expires ?? cookie.expires;
-    const maxAge = cookie['Max-Age'] ?? cookie['max-age'];
-    this.state.auth = {
-      sid: cookie.SID,
-      expires: expires
-        ? new Date(expires)
-        : maxAge
-          ? new Date(Date.now() + Number(maxAge) * 1000)
-          : new Date(Date.now() + 3_600_000)
-    };
-
-    // Check version after successful login
-    await this.checkVersion();
-
-    return true;
-  }
-
-  logout(): boolean {
-    delete this.state.auth;
-    return true;
-  }
-
-  // eslint-disable-next-line max-params
-  async request<T>(
+  private async request<T>(
     path: string,
     method: 'GET' | 'POST',
     params?: Record<string, string | number>,
@@ -925,6 +1206,10 @@ export class QBittorrent {
     return (await res.text()) as T;
   }
 
+  /**
+   * Low-level fetch wrapper with optional dispatcher and timeout support.
+   * Throws on non-2xx responses with response body included in the error message.
+   */
   private async fetch(url: string, init: RequestInit = {}): Promise<Response> {
     const fetchImpl = this.config.fetch ?? globalThis.fetch;
     if (!fetchImpl) {
@@ -961,13 +1246,16 @@ export class QBittorrent {
     }
   }
 
+  /**
+   * Detect and cache server version for API compatibility behavior.
+   */
   private async checkVersion(): Promise<void> {
-    if (!this.state.version?.version) {
-      const newVersion = await this.getAppVersion();
+    if (!this.state.version?.application) {
+      const newVersion = await this.getApplicationVersion();
       // Remove potential 'v' prefix and any extra info after version number
       const cleanVersion = newVersion.replace(/^v/, '').split('-')[0]!;
       this.state.version = {
-        version: newVersion,
+        application: newVersion,
         isVersion5OrHigher: cleanVersion === '5.0.0' || isGreater(cleanVersion, '5.0.0')
       };
     }

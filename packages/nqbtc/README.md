@@ -1,5 +1,6 @@
 # nqbtc
 
+[![version](https://img.shields.io/npm/v/nqbtc?label=nqbtc)](https://www.npmjs.com/package/nqbtc)
 [![CI](https://github.com/yjl9903/nqbt/actions/workflows/ci.yml/badge.svg)](https://github.com/yjl9903/nqbt/actions/workflows/ci.yml)
 
 Run qBittorrent MCP server.
