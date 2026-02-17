@@ -1,6 +1,7 @@
 # nqbtc
 
 [![version](https://img.shields.io/npm/v/nqbtc?label=nqbtc)](https://www.npmjs.com/package/nqbtc)
+[![MCP Badge](https://lobehub.com/badge/mcp/yjl9903-nqbtc?style=plastic)](https://lobehub.com/mcp/yjl9903-nqbtc)
 [![CI](https://github.com/yjl9903/nqbt/actions/workflows/ci.yml/badge.svg)](https://github.com/yjl9903/nqbt/actions/workflows/ci.yml)
 
 Run qBittorrent MCP server, and TypeScript qBittorrent WebUI API binding.
