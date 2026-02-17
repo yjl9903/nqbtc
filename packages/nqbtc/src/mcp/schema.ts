@@ -76,6 +76,51 @@ export const setApplicationPreferencesInputSchema = z.object({
   preferences: z.record(z.string(), z.unknown())
 });
 
+const cookieInputSchema = z.object({
+  name: z.string().optional(),
+  domain: z.string().optional(),
+  path: z.string().optional(),
+  value: z.string().optional(),
+  expirationDate: z.number().optional()
+});
+
+export const setCookiesInputSchema = z.object({
+  cookies: z.array(cookieInputSchema)
+});
+
+export const getLogInputSchema = z
+  .object({
+    normal: z.boolean().optional(),
+    info: z.boolean().optional(),
+    warning: z.boolean().optional(),
+    critical: z.boolean().optional(),
+    lastKnownId: z.number().int().nonnegative().optional()
+  })
+  .optional()
+  .default({});
+
+export const getPeerLogInputSchema = z
+  .object({
+    lastKnownId: z.number().int().nonnegative().optional()
+  })
+  .optional()
+  .default({});
+
+export const getMainDataInputSchema = z
+  .object({
+    rid: z.number().int().nonnegative().optional()
+  })
+  .optional()
+  .default({});
+
+export const globalLimitInputSchema = z.object({
+  limitBytesPerSecond: z.number().int().nonnegative()
+});
+
+export const banPeersInputSchema = z.object({
+  peers: stringOrStringArraySchema
+});
+
 export const getTorrentPeersDataInputSchema = z.object({
   hash: z.string(),
   rid: z.number().int().nonnegative().optional()

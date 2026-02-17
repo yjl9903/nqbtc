@@ -10,11 +10,16 @@ import {
   addNewTorrentInputSchema,
   addTorrentTagsInputSchema,
   addTrackersToTorrentInputSchema,
+  banPeersInputSchema,
   deleteTorrentsInputSchema,
   editCategoryInputSchema,
   editTrackersInputSchema,
+  getLogInputSchema,
+  getMainDataInputSchema,
+  getPeerLogInputSchema,
   getTorrentListInputSchema,
   getTorrentPeersDataInputSchema,
+  globalLimitInputSchema,
   hashInputSchema,
   hashesInputSchema,
   removeCategoriesInputSchema,
@@ -22,6 +27,7 @@ import {
   removeTrackersInputSchema,
   renamePathInputSchema,
   setApplicationPreferencesInputSchema,
+  setCookiesInputSchema,
   setFilePriorityInputSchema,
   setTorrentCategoryInputSchema,
   setTorrentLimitInputSchema,
@@ -121,6 +127,50 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
     }
   );
 
+  registerNoArgsTool(server, 'get_cookies', 'Get qBittorrent cookies.', async () => {
+    return qbittorrent.getCookies();
+  });
+
+  registerToolWithArgs(
+    server,
+    'set_cookies',
+    'Set qBittorrent cookies.',
+    setCookiesInputSchema,
+    async (args) => {
+      return qbittorrent.setCookies(args.cookies);
+    }
+  );
+
+  registerToolWithArgs(
+    server,
+    'get_log',
+    'Get qBittorrent main log entries.',
+    getLogInputSchema,
+    async (args) => {
+      return qbittorrent.getLog(args);
+    }
+  );
+
+  registerToolWithArgs(
+    server,
+    'get_peer_log',
+    'Get qBittorrent peer log entries.',
+    getPeerLogInputSchema,
+    async (args) => {
+      return qbittorrent.getPeerLog(args.lastKnownId);
+    }
+  );
+
+  registerToolWithArgs(
+    server,
+    'get_main_data',
+    'Get qBittorrent main sync data.',
+    getMainDataInputSchema,
+    async (args) => {
+      return qbittorrent.getMainData(args.rid);
+    }
+  );
+
   registerToolWithArgs(
     server,
     'get_torrent_peers_data',
@@ -128,6 +178,81 @@ export function registerQbittorrentTools(server: McpServer, qbittorrent: QBittor
     getTorrentPeersDataInputSchema,
     async (args) => {
       return qbittorrent.getTorrentPeersData(args.hash, args.rid);
+    }
+  );
+
+  registerNoArgsTool(
+    server,
+    'get_global_transfer_info',
+    'Get qBittorrent global transfer information. This method returns info you usually see in qBittorrent status bar.',
+    async () => {
+      return qbittorrent.getGlobalTransferInfo();
+    }
+  );
+
+  registerNoArgsTool(
+    server,
+    'get_alternative_speed_limits_state',
+    'Get alternative speed limits state.',
+    async () => {
+      return qbittorrent.getAlternativeSpeedLimitsState();
+    }
+  );
+
+  registerNoArgsTool(
+    server,
+    'toggle_alternative_speed_limits',
+    'Toggle alternative speed limits state.',
+    async () => {
+      return qbittorrent.toggleAlternativeSpeedLimits();
+    }
+  );
+
+  registerNoArgsTool(
+    server,
+    'get_global_download_limit',
+    'Get global download speed limit.',
+    async () => {
+      return qbittorrent.getGlobalDownloadLimit();
+    }
+  );
+
+  registerToolWithArgs(
+    server,
+    'set_global_download_limit',
+    'Set global download speed limit.',
+    globalLimitInputSchema,
+    async (args) => {
+      return qbittorrent.setGlobalDownloadLimit(args.limitBytesPerSecond);
+    }
+  );
+
+  registerNoArgsTool(
+    server,
+    'get_global_upload_limit',
+    'Get global upload speed limit.',
+    async () => {
+      return qbittorrent.getGlobalUploadLimit();
+    }
+  );
+
+  registerToolWithArgs(
+    server,
+    'set_global_upload_limit',
+    'Set global upload speed limit.',
+    globalLimitInputSchema,
+    async (args) => {
+      return qbittorrent.setGlobalUploadLimit(args.limitBytesPerSecond);
+    }
+  );
+
+  registerToolWithArgs(
+    server,
+    'ban_peers',
+    'Ban one or more peers by IP.',
+    banPeersInputSchema,
+    async (args) => {
+      return qbittorrent.banPeers(args.peers);
     }
   );
 

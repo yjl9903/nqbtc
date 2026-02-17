@@ -5,8 +5,15 @@ import type {
   AddNewTorrentOptions,
   BuildInfo,
   DownloadSpeed,
+  GetLogOptions,
+  GlobalTransferInfo,
   GetTorrentListOptions,
+  LogEntry,
+  MainData,
+  PeerLogEntry,
   Preferences,
+  QbtCookie,
+  QbtCookieInput,
   Torrent,
   TorrentCategories,
   TorrentFile,
@@ -299,7 +306,111 @@ export class QBittorrent {
     return res;
   }
 
+  /**
+   * Shut down qBittorrent application.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#shutdown-application}
+   */
+  async shutdownApplication(): Promise<boolean> {
+    await this.request('/app/shutdown', 'POST', undefined, undefined, undefined, false);
+    delete this.state.auth;
+    delete this.state.version;
+    return true;
+  }
+
+  /**
+   * Get cookies used for HTTP downloads.
+   * @returns Cookie list.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-cookies}
+   */
+  async getCookies(): Promise<QbtCookie[]> {
+    const res = await this.request<QbtCookie[]>('/app/cookies', 'GET');
+    return res;
+  }
+
+  /**
+   * Set cookies used for HTTP downloads.
+   * @param cookies Cookie entries to upsert.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-cookies}
+   */
+  async setCookies(cookies: QbtCookieInput[]): Promise<boolean> {
+    await this.request(
+      '/app/setCookies',
+      'POST',
+      undefined,
+      objToUrlSearchParams({
+        json: JSON.stringify(cookies)
+      }),
+      undefined,
+      false
+    );
+    return true;
+  }
+
+  // Log
+
+  /**
+   * Get main application log entries.
+   * @param options Optional level filters and incremental id.
+   * @returns Log entries.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-log}
+   */
+  async getLog(options: GetLogOptions = {}): Promise<LogEntry[]> {
+    const params: Record<string, string | number> = {};
+    if (options.normal !== undefined) {
+      params.normal = `${options.normal}`;
+    }
+    if (options.info !== undefined) {
+      params.info = `${options.info}`;
+    }
+    if (options.warning !== undefined) {
+      params.warning = `${options.warning}`;
+    }
+    if (options.critical !== undefined) {
+      params.critical = `${options.critical}`;
+    }
+    if (options.lastKnownId !== undefined) {
+      params.last_known_id = options.lastKnownId;
+    }
+
+    const res = await this.request<LogEntry[]>('/log/main', 'GET', params);
+    return res;
+  }
+
+  /**
+   * Get peer log entries.
+   * @param lastKnownId Incremental cursor. Omit for all available entries.
+   * @returns Peer log entries.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-peer-log}
+   */
+  async getPeerLog(lastKnownId?: number): Promise<PeerLogEntry[]> {
+    const params: Record<string, number> = {};
+    if (lastKnownId !== undefined) {
+      params.last_known_id = lastKnownId;
+    }
+
+    const res = await this.request<PeerLogEntry[]>('/log/peers', 'GET', params);
+    return res;
+  }
+
   // Sync
+
+  /**
+   * Get main data and incremental updates.
+   * @param rid Response id from previous call. Omit or `0` for full response.
+   * @returns Main data payload with global state, torrents, categories, and tags.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-main-data}
+   */
+  async getMainData(rid?: number): Promise<MainData> {
+    const params: Record<string, number> = {};
+    if (rid !== undefined) {
+      params.rid = rid;
+    }
+
+    const res = await this.request<MainData>('/sync/maindata', 'GET', params);
+    return res;
+  }
 
   /**
    * Get peer list and incremental peer updates for a torrent.
@@ -316,6 +427,155 @@ export class QBittorrent {
 
     const res = await this.request<TorrentPeersResponse>('/sync/torrentPeers', 'GET', params);
     return res;
+  }
+
+  // Transfer Info
+
+  /**
+   * Get global transfer information.
+   * This method returns info you usually see in qBittorrent status bar.
+   * @returns Global transfer statistics and limits.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-global-transfer-info}
+   */
+  async getGlobalTransferInfo(): Promise<GlobalTransferInfo> {
+    const res = await this.request<GlobalTransferInfo>('/transfer/info', 'GET');
+    return res;
+  }
+
+  /**
+   * Get alternative speed limits mode state.
+   * @returns `true` when alternative speed limits are enabled.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-alternative-speed-limits-state}
+   */
+  async getAlternativeSpeedLimitsState(): Promise<boolean> {
+    const res = await this.request<string>(
+      '/transfer/speedLimitsMode',
+      'GET',
+      undefined,
+      undefined,
+      undefined,
+      false
+    );
+    return res.trim() === '1';
+  }
+
+  /**
+   * Toggle alternative speed limits mode.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#toggle-alternative-speed-limits}
+   */
+  async toggleAlternativeSpeedLimits(): Promise<boolean> {
+    await this.request(
+      '/transfer/toggleSpeedLimitsMode',
+      'POST',
+      undefined,
+      undefined,
+      undefined,
+      false
+    );
+    return true;
+  }
+
+  /**
+   * Get global download limit.
+   * @returns Download limit in bytes/second (`0` means unlimited).
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-global-download-limit}
+   */
+  async getGlobalDownloadLimit(): Promise<number> {
+    const res = await this.request<string>(
+      '/transfer/downloadLimit',
+      'GET',
+      undefined,
+      undefined,
+      undefined,
+      false
+    );
+    const limit = Number.parseInt(res, 10);
+    if (Number.isNaN(limit)) {
+      throw new Error(`Invalid download limit: ${res}`);
+    }
+    return limit;
+  }
+
+  /**
+   * Set global download limit.
+   * @param limitBytesPerSecond Limit in bytes/second (`0` means unlimited).
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-global-download-limit}
+   */
+  async setGlobalDownloadLimit(limitBytesPerSecond: number): Promise<boolean> {
+    await this.request(
+      '/transfer/setDownloadLimit',
+      'POST',
+      undefined,
+      objToUrlSearchParams({
+        limit: `${limitBytesPerSecond}`
+      }),
+      undefined,
+      false
+    );
+    return true;
+  }
+
+  /**
+   * Get global upload limit.
+   * @returns Upload limit in bytes/second (`0` means unlimited).
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#get-global-upload-limit}
+   */
+  async getGlobalUploadLimit(): Promise<number> {
+    const res = await this.request<string>(
+      '/transfer/uploadLimit',
+      'GET',
+      undefined,
+      undefined,
+      undefined,
+      false
+    );
+    const limit = Number.parseInt(res, 10);
+    if (Number.isNaN(limit)) {
+      throw new Error(`Invalid upload limit: ${res}`);
+    }
+    return limit;
+  }
+
+  /**
+   * Set global upload limit.
+   * @param limitBytesPerSecond Limit in bytes/second (`0` means unlimited).
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#set-global-upload-limit}
+   */
+  async setGlobalUploadLimit(limitBytesPerSecond: number): Promise<boolean> {
+    await this.request(
+      '/transfer/setUploadLimit',
+      'POST',
+      undefined,
+      objToUrlSearchParams({
+        limit: `${limitBytesPerSecond}`
+      }),
+      undefined,
+      false
+    );
+    return true;
+  }
+
+  /**
+   * Ban peers by IP.
+   * @param peers Peer IP or multiple IPs. Multiple values are joined by `|`.
+   * @returns `true` when request succeeds.
+   * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#ban-peers}
+   */
+  async banPeers(peers: string | string[]): Promise<boolean> {
+    await this.request(
+      '/transfer/banPeers',
+      'POST',
+      undefined,
+      objToUrlSearchParams({
+        peers: normalizeList(peers, '|')
+      }),
+      undefined,
+      false
+    );
+    return true;
   }
 
   // Torrent Management

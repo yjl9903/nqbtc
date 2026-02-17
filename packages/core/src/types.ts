@@ -25,6 +25,219 @@ export interface BuildInfo {
   bitness: string;
 }
 
+export interface QbtCookie {
+  /**
+   * Cookie name
+   */
+  name: string;
+
+  /**
+   * Cookie domain
+   */
+  domain: string;
+
+  /**
+   * Cookie path
+   */
+  path: string;
+
+  /**
+   * Cookie value
+   */
+  value: string;
+
+  /**
+   * Seconds since epoch
+   */
+  expirationDate: number;
+}
+
+export interface QbtCookieInput {
+  name?: string;
+
+  domain?: string;
+
+  path?: string;
+
+  value?: string;
+
+  expirationDate?: number;
+}
+
+export const enum LogMessageType {
+  Normal = 1,
+  Info = 2,
+  Warning = 4,
+  Critical = 8
+}
+
+export interface GetLogOptions {
+  normal?: boolean;
+
+  info?: boolean;
+
+  warning?: boolean;
+
+  critical?: boolean;
+
+  lastKnownId?: number;
+}
+
+export interface LogEntry {
+  /**
+   * ID of the message
+   */
+  id: number;
+
+  /**
+   * Text of the message
+   */
+  message: string;
+
+  /**
+   * Seconds since epoch
+   */
+  timestamp: number;
+
+  /**
+   * Message type bit flag
+   */
+  type: LogMessageType | number;
+}
+
+export interface PeerLogEntry {
+  /**
+   * ID of the peer log entry
+   */
+  id: number;
+
+  /**
+   * IP of the peer
+   */
+  ip: string;
+
+  /**
+   * Seconds since epoch
+   */
+  timestamp: number;
+
+  /**
+   * Whether the peer was blocked
+   */
+  blocked: boolean;
+
+  /**
+   * Reason for the block
+   */
+  reason: string;
+}
+
+export type TransferConnectionStatus = 'connected' | 'firewalled' | 'disconnected';
+
+export interface GlobalTransferInfo {
+  /**
+   * Global download rate (bytes/s)
+   */
+  dl_info_speed: number;
+
+  /**
+   * Data downloaded this session (bytes)
+   */
+  dl_info_data: number;
+
+  /**
+   * Global upload rate (bytes/s)
+   */
+  up_info_speed: number;
+
+  /**
+   * Data uploaded this session (bytes)
+   */
+  up_info_data: number;
+
+  /**
+   * Download rate limit (bytes/s)
+   */
+  dl_rate_limit: number;
+
+  /**
+   * Upload rate limit (bytes/s)
+   */
+  up_rate_limit: number;
+
+  /**
+   * DHT nodes connected
+   */
+  dht_nodes: number;
+
+  /**
+   * Connection status
+   */
+  connection_status: TransferConnectionStatus;
+
+  /**
+   * True if torrent queueing is enabled
+   */
+  queueing?: boolean;
+
+  /**
+   * True if alternative speed limits are enabled
+   */
+  use_alt_speed_limits?: boolean;
+
+  /**
+   * Transfer list refresh interval (milliseconds)
+   */
+  refresh_interval?: number;
+}
+
+export interface MainData {
+  /**
+   * Response ID
+   */
+  rid: number;
+
+  /**
+   * Whether full data was returned
+   */
+  full_update: boolean;
+
+  /**
+   * Partial torrent updates keyed by hash
+   */
+  torrents?: Record<string, Partial<Torrent>>;
+
+  /**
+   * Hashes removed since last request
+   */
+  torrents_removed?: string[];
+
+  /**
+   * Category updates keyed by category name
+   */
+  categories?: TorrentCategories;
+
+  /**
+   * Categories removed since last request
+   */
+  categories_removed?: string[];
+
+  /**
+   * Tags added since last request
+   */
+  tags?: string[];
+
+  /**
+   * Tags removed since last request
+   */
+  tags_removed?: string[];
+
+  /**
+   * Global transfer/server state updates
+   */
+  server_state?: Partial<GlobalTransferInfo>;
+}
+
 /**
  * @deprecated Replaced by 'running' in qBittorrent v5.
  */
@@ -356,7 +569,7 @@ export interface Category {
   savePath: string;
 }
 
-export enum TorrentState {
+export const enum TorrentState {
   /**
    * Some error occurred, applies to paused torrents
    */
@@ -662,7 +875,7 @@ export interface TorrentTrackers {
   msg: string;
 }
 
-export enum TorrentTrackerStatus {
+export const enum TorrentTrackerStatus {
   /**
    * Tracker is disabled (used for DHT, PeX, and LSD)
    */
@@ -729,7 +942,7 @@ export interface TorrentFile {
   availability: number;
 }
 
-export enum TorrentFilePriority {
+export const enum TorrentFilePriority {
   /**
    * Do not download
    */
@@ -748,7 +961,7 @@ export enum TorrentFilePriority {
   MaxPriority = 7
 }
 
-export enum TorrentPieceState {
+export const enum TorrentPieceState {
   /**
    * Not downloaded yet
    */
