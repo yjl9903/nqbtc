@@ -18,9 +18,16 @@ export function createQbittorrentMcpServer(
     {
       name: 'nqbtc',
       title: 'nqbtc qBittorrent MCP Server',
+      version,
       description:
         'qBittorrent is the underlying BitTorrent client that downloads and seeds data. nqbtc MCP server is a control bridge on top of qBittorrent WebUI API: models call snake_case tools (for example get_torrent_list, add_new_torrent) and read qbittorrent://* resources exposed by this server to query or mutate qBittorrent state (torrents, trackers, categories, tags, limits, and preferences).',
-      version
+      icons: [
+        {
+          src: 'https://raw.githubusercontent.com/qbittorrent/qBittorrent/refs/heads/master/src/icons/qbittorrent.ico',
+          mimeType: 'image/x-icon'
+        }
+      ],
+      websiteUrl: 'https://github.com/yjl9903/nqbtc'
     },
     {
       instructions:
