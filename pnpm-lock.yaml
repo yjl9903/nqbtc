@@ -50,8 +50,8 @@ importers:
         specifier: 1.26.0
         version: 1.26.0(zod@4.3.6)
       breadc:
-        specifier: 1.0.0-beta.10
-        version: 1.0.0-beta.10
+        specifier: 1.0.0-beta.13
+        version: 1.0.0-beta.13
       nqbt:
         specifier: workspace:*
         version: link:../nqbt
@@ -82,17 +82,17 @@ packages:
     resolution: {integrity: sha512-ubmJ6TShyaD69VE9DQrlXcdkvJbmwWPB8qYj0H2kaJi29O7vJT9ajSdBd2W8CG34pwL9pYA74fi7RHC1qbLoVQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
 
-  '@breadc/color@1.0.0-beta.10':
-    resolution: {integrity: sha512-Ohiyw5TDYRaZokBt6+qw0xsn9NbeUvAExgsbFA1nE9BqfXGVnxsvI6vAIoil5aSHumEpAxjUAF8muRPH5BCQEQ==}
+  '@breadc/color@1.0.0-beta.13':
+    resolution: {integrity: sha512-egF3FtYmY+6WNdt5zCh9cuClGmfMaqTyWe0yODsQGQOoBoWSU53LP2XpM18U0LkMpGS6qvW4TfSl0yXKRry/1Q==}
 
-  '@breadc/core@1.0.0-beta.10':
-    resolution: {integrity: sha512-ttaS9mRpQikuEV055u9TLh3bePdXoZV4nFnVXDfswFrJC7zgspZ2U9KHm8G3SUofqF9OSHTZ7IPh44RNfmjkFA==}
+  '@breadc/core@1.0.0-beta.13':
+    resolution: {integrity: sha512-eC0qWTBBxOXGDREIMOkcZWshjecML6y7IVxE9KQRbLaQlKJm9uRed6M0aD2v44ET5XKd2+OYckwDByO67yLt4A==}
 
-  '@breadc/death@1.0.0-beta.10':
-    resolution: {integrity: sha512-SD9A1sJsnHb3nhGkLVSddBnPSakXHxfrOtgCF6322yADkNQ6TLRgd8yVz1KWppoJvKOJAVuxGZSoiyRe+QXACw==}
+  '@breadc/death@1.0.0-beta.13':
+    resolution: {integrity: sha512-PNZ6AKgks+I3cJ/R1npq85eBvhi6bu/Ie9p5N/0Cfh/K1LO99ngRxUCT6HxFOHtQwN0g9RsacwSirswFRp/JQw==}
 
-  '@breadc/tui@1.0.0-beta.10':
-    resolution: {integrity: sha512-/EKJxYG5YAyZ53mXZusOdbY5OfHSO4o4hDahZV6yRoKpWeEYkXDfkdHACJFrYu+Jarw0UTxHHXpPjsQMz1OX+w==}
+  '@breadc/tui@1.0.0-beta.13':
+    resolution: {integrity: sha512-MRVuOAD+I+WnOBeJYCkStFvgUxXr0JsrLdW+D9624tzQntS0L9VMin8Edhm4D0kh5SLKUTKClGBesJ4X9ckY6A==}
 
   '@emnapi/core@1.8.1':
     resolution: {integrity: sha512-AvT9QFpxK0Zd8J0jopedNm+w/2fIzvtPKPjqyw9jwvBaReTTqPBk9Hixaz7KbjimP+QNz605/XnjFcDAL2pqBg==}
@@ -610,8 +610,8 @@ packages:
     resolution: {integrity: sha512-oP5VkATKlNwcgvxi0vM0p/D3n2C3EReYVX+DNYs5TjZFn/oQt2j+4sVJtSMr18pdRr8wjTcBl6LoV+FUwzPmNA==}
     engines: {node: '>=18'}
 
-  breadc@1.0.0-beta.10:
-    resolution: {integrity: sha512-pdhMLCXdTS4nTnkv7rfD+gIZli5vb3YyCXyucYRK6eIcauBRfVJNRu32pszNcQ8IKzKdaMDjUNTslYAdGnGGBg==}
+  breadc@1.0.0-beta.13:
+    resolution: {integrity: sha512-CWuTWTbAUKHatG9e9ZttrTBHqWuY0kPYtp+6caRCrS0h9Wf9091dk2vGSJLCZDsGc2KTJzHQCgg88vJpSz4EGQ==}
 
   bumpp@10.4.1:
     resolution: {integrity: sha512-X/bwWs5Gbb/D7rN4aHLB7zdjiA6nGdjckM1sTHhI9oovIbEw2L5pw5S4xzk8ZTeOZ8EnwU/Ze4SoZ6/Vr3pM2Q==}
@@ -832,8 +832,8 @@ packages:
   function-bind@1.1.2:
     resolution: {integrity: sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==}
 
-  get-east-asian-width@1.4.0:
-    resolution: {integrity: sha512-QZjmEOC+IT1uk6Rx0sX22V6uHWVwbdbxf1faPqJ1QhLdGgsRGCZoyaQBm/piRdJy/D2um6hM1UP7ZEeQ4EkP+Q==}
+  get-east-asian-width@1.5.0:
+    resolution: {integrity: sha512-CQ+bEO+Tva/qlmw24dCejulK5pMzVnUOFOijVogd3KQs07HnRIgp8TGipvCCRT06xeYEbpbgwaCxglFyiuIcmA==}
     engines: {node: '>=18'}
 
   get-intrinsic@1.3.0:
@@ -1148,12 +1148,8 @@ packages:
   std-env@3.10.0:
     resolution: {integrity: sha512-5GS12FdOZNliM5mAOxFRg7Ir0pWz8MdpYm6AY6VPkGpbA7ZzmbzNcBJQ0GPvvyWgcY7QAhCgf9Uy89I03faLkg==}
 
-  string-width@8.1.1:
-    resolution: {integrity: sha512-KpqHIdDL9KwYk22wEOg/VIqYbrnLeSApsKT/bSj6Ez7pn3CftUiLAv2Lccpq1ALcpLV9UX1Ppn92npZWu2w/aw==}
-    engines: {node: '>=20'}
-
-  strip-ansi@7.1.2:
-    resolution: {integrity: sha512-gmBGslpoQJtgnMAvOVqGZpEz9dyoKTCzy2nfz/n8aIFhN/jCE/rCmcxabB6jOOHV+0WNnylOxaxBQPSvcWklhA==}
+  strip-ansi@7.2.0:
+    resolution: {integrity: sha512-yDPMNjp4WyfYBkHnjIRLfca1i6KMyGCtsVgoKe/z1+6vukgaENdgGBZt+ZmKPc4gavvEZ5OgHfHdrazhgNyG7w==}
     engines: {node: '>=12'}
 
   tinybench@2.9.0:
@@ -1398,19 +1394,20 @@ snapshots:
       '@babel/helper-string-parser': 8.0.0-rc.2
       '@babel/helper-validator-identifier': 8.0.0-rc.1
 
-  '@breadc/color@1.0.0-beta.10': {}
+  '@breadc/color@1.0.0-beta.13': {}
 
-  '@breadc/core@1.0.0-beta.10':
+  '@breadc/core@1.0.0-beta.13':
     dependencies:
-      '@breadc/color': 1.0.0-beta.10
+      '@breadc/color': 1.0.0-beta.13
 
-  '@breadc/death@1.0.0-beta.10': {}
+  '@breadc/death@1.0.0-beta.13': {}
 
-  '@breadc/tui@1.0.0-beta.10':
+  '@breadc/tui@1.0.0-beta.13':
     dependencies:
-      '@breadc/color': 1.0.0-beta.10
+      '@breadc/color': 1.0.0-beta.13
+      get-east-asian-width: 1.5.0
       std-env: 3.10.0
-      string-width: 8.1.1
+      strip-ansi: 7.2.0
 
   '@emnapi/core@1.8.1':
     dependencies:
@@ -1784,12 +1781,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  breadc@1.0.0-beta.10:
+  breadc@1.0.0-beta.13:
     dependencies:
-      '@breadc/color': 1.0.0-beta.10
-      '@breadc/core': 1.0.0-beta.10
-      '@breadc/death': 1.0.0-beta.10
-      '@breadc/tui': 1.0.0-beta.10
+      '@breadc/color': 1.0.0-beta.13
+      '@breadc/core': 1.0.0-beta.13
+      '@breadc/death': 1.0.0-beta.13
+      '@breadc/tui': 1.0.0-beta.13
 
   bumpp@10.4.1:
     dependencies:
@@ -2024,7 +2021,7 @@ snapshots:
 
   function-bind@1.1.2: {}
 
-  get-east-asian-width@1.4.0: {}
+  get-east-asian-width@1.5.0: {}
 
   get-intrinsic@1.3.0:
     dependencies:
@@ -2364,12 +2361,7 @@ snapshots:
 
   std-env@3.10.0: {}
 
-  string-width@8.1.1:
-    dependencies:
-      get-east-asian-width: 1.4.0
-      strip-ansi: 7.1.2
-
-  strip-ansi@7.1.2:
+  strip-ansi@7.2.0:
     dependencies:
       ansi-regex: 6.2.2
 
