@@ -128,7 +128,14 @@ export class QBittorrent {
    * @param config Partial client configuration merged with defaults.
    */
   public constructor(config: Partial<QBittorrentClientConfig> = {}) {
-    this.config = { ...defaults, ...config };
+    this.config = {
+      ...defaults,
+      ...config,
+      baseURL: config.baseURL || defaults.baseURL,
+      username: config.username || defaults.username,
+      password: config.password || defaults.password,
+      timeout: config.timeout || defaults.timeout
+    };
   }
 
   // Authentication
