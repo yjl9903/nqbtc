@@ -42,6 +42,14 @@ You can also config username and password of WebUI with `--username=xxx` and `--
 npx nqbtc mcp --base-url=http://localhost:9091/api/v2 --username=xxx --password=yyy
 ```
 
+It also read local `.env` file and accept following configurations.
+
+```env
+QBITTORRENT_WEBUI_BASE_URL=http://localhost:9091/api/v2
+QBITTORRENT_WEBUI_USERNAME=
+QBITTORRENT_WEBUI_PASSWORD=
+```
+
 ## Use Client Library
 
 ### Installation
