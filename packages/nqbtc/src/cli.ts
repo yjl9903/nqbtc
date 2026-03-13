@@ -33,8 +33,18 @@ const cli = breadc('nqbtc', { version, description })
 cli
   .command('launch', 'Launch qBittorrent application')
   .option('--verbose', 'Enable verbose log')
+  .option('--shutdown [timeout]', 'Shutdown and re-launch qBittorrent application')
   .action(async (options, context) => {
     const { launchQBittorrent } = await import('@nqbt/node');
+
+    if (options.shutdown) {
+      try {
+        const { qbittorrent } = context.data;
+        await qbittorrent.getApplicationVersion();
+        await qbittorrent.shutdownApplication();
+        await new Promise((res) => setTimeout(res, options.shutdown ? +options.shutdown : 3000));
+      } catch {}
+    }
 
     const result = await launchQBittorrent();
 
