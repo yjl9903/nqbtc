@@ -45,9 +45,14 @@ export interface QBittorrentClientState {
    */
   auth?: {
     /**
-     * qBittorrent session id (`SID`) from `/auth/login`.
+     * qBittorrent session id from `/auth/login`.
      */
     sid: string;
+
+    /**
+     * Session cookie name returned by the server. Defaults to `SID` for legacy state.
+     */
+    cookieName?: string;
 
     /**
      * Session expiration time derived from cookie attributes.
@@ -141,7 +146,7 @@ export class QBittorrent {
   // Authentication
 
   /**
-   * Authenticate against qBittorrent WebUI and cache `SID` cookie.
+   * Authenticate against qBittorrent WebUI and cache the session cookie.
    * @returns `true` when authentication succeeds.
    * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#login}
    */
@@ -164,23 +169,32 @@ export class QBittorrent {
         res.headers as Headers & {
           getSetCookie?: () => string[];
         }
-      ).getSetCookie?.() ?? [res.headers.get('set-cookie')].filter(Boolean);
+      ).getSetCookie?.() ??
+      // Older fetch implementations may combine headers; Expires also contains a comma.
+      res.headers.get('set-cookie')?.split(/,(?=\s*[^;,\s=]+=)/) ??
+      [];
 
-    const setCookie = setCookies.find((value) => value.includes('SID=')) ?? setCookies[0];
+    // Prefer known session names if a proxy adds cookies, but accept custom names too.
+    const setCookie =
+      setCookies.find((value) => /^\s*(?:SID|QBT_SID_\d+)=/.test(value)) ?? setCookies[0];
 
     if (!setCookie) {
       throw new Error('Cookie not found. Auth Failed.');
     }
 
-    const cookie = cookieParse(setCookie);
-    if (!cookie.SID) {
+    const [pair = '', ...attributes] = setCookie.split(';');
+    // Preserve the wire value: decoding it would change the Cookie header we send back.
+    const [cookieName, sid] = Object.entries(cookieParse(pair, { decode: (value) => value }))[0] ?? [];
+    if (!cookieName || !sid) {
       throw new Error('Invalid cookie');
     }
 
+    const cookie = cookieParse(attributes.join(';'));
     const expires = cookie.Expires ?? cookie.expires;
     const maxAge = cookie['Max-Age'] ?? cookie['max-age'];
     this.state.auth = {
-      sid: cookie.SID,
+      sid,
+      cookieName,
       expires: expires
         ? new Date(expires)
         : maxAge
@@ -195,7 +209,7 @@ export class QBittorrent {
   }
 
   /**
-   * Log out from qBittorrent WebUI and clear `SID` cookie cache.
+   * Log out from qBittorrent WebUI and clear the session cookie cache.
    * @returns `true` when logout request succeeds.
    * {@link https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)#logout}
    */
@@ -208,7 +222,7 @@ export class QBittorrent {
         await this.fetch(url, {
           method: 'POST',
           headers: {
-            Cookie: `SID=${sid}`
+            Cookie: `${this.state.auth?.cookieName ?? 'SID'}=${sid}`
           }
         });
       }
@@ -1727,7 +1741,7 @@ export class QBittorrent {
     const res = await this.fetch(url.toString(), {
       method,
       headers: {
-        Cookie: `SID=${this.state.auth!.sid ?? ''}`,
+        Cookie: `${this.state.auth!.cookieName ?? 'SID'}=${this.state.auth!.sid ?? ''}`,
         ...headers
       },
       body
