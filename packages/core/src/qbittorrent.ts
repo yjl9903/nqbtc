@@ -1,4 +1,4 @@
-import { parse as cookieParse } from 'cookie';
+import { parseCookie as cookieParse } from 'cookie';
 
 import type {
   AddNewMagnetOptions,

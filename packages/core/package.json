@@ -35,7 +35,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "cookie": "^1.1.1"
+    "cookie": "^2.0.1"
   },
   "engines": {
     "node": ">=v24.0.0"
