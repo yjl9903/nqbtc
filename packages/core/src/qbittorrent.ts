@@ -1094,11 +1094,11 @@ export class QBittorrent {
     const data: Record<string, string> = {
       hashes: normalizeHashes(hashes),
       ratioLimit: `${options.ratioLimit}`,
-      seedingTimeLimit: `${options.seedingTimeLimit}`
+      seedingTimeLimit: `${options.seedingTimeLimit}`,
+      inactiveSeedingTimeLimit: `${options.inactiveSeedingTimeLimit ?? -2}`,
+      // Required by qBittorrent 5.2+, ignored by older servers.
+      shareLimitAction: options.shareLimitAction ?? 'Default'
     };
-    if (options.inactiveSeedingTimeLimit !== undefined) {
-      data.inactiveSeedingTimeLimit = `${options.inactiveSeedingTimeLimit}`;
-    }
 
     await this.request(
       '/torrents/setShareLimits',

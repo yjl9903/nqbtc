@@ -485,7 +485,8 @@ export function registerQbittorrentTools(
       return qbittorrent.setTorrentShareLimits(args.hashes, {
         ratioLimit: args.ratioLimit,
         seedingTimeLimit: args.seedingTimeLimit,
-        inactiveSeedingTimeLimit: args.inactiveSeedingTimeLimit
+        inactiveSeedingTimeLimit: args.inactiveSeedingTimeLimit,
+        shareLimitAction: args.shareLimitAction
       });
     }
   );

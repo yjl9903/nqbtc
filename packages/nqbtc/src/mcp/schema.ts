@@ -322,7 +322,15 @@ export const setTorrentShareLimitsInputSchema = z
       .number()
       .int()
       .optional()
-      .describe('Inactive seeding time limit in minutes (-2 global, -1 unlimited).')
+      .describe(
+        'Inactive seeding time limit in minutes (-2 global, -1 unlimited). Defaults to -2.'
+      ),
+    shareLimitAction: z
+      .enum(['Default', 'Stop', 'Remove', 'RemoveWithContent', 'EnableSuperSeeding'])
+      .optional()
+      .describe(
+        'Action when share limits are reached (qBittorrent 5.2+). Defaults to Default, inheriting the server configuration.'
+      )
   })
   .describe('Set share limits for one or more torrents.');
 

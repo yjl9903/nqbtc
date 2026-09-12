@@ -324,6 +324,10 @@ export interface GetTorrentListOptions {
   includeTrackers?: boolean;
 }
 
+/** Action taken when a torrent reaches its share limits (qBittorrent 5.2+). */
+export type ShareLimitAction =
+  'Default' | 'Stop' | 'Remove' | 'RemoveWithContent' | 'EnableSuperSeeding';
+
 /**
  * Payload for `POST /api/v2/torrents/setShareLimits`.
  */
@@ -343,8 +347,16 @@ export interface SetTorrentShareLimitsOptions {
   /**
    * Inactive seeding time limit in minutes.
    * `-2` means use global limit, `-1` means no limit.
+   * Defaults to `-2` when omitted.
    */
   inactiveSeedingTimeLimit?: number;
+
+  /**
+   * Action taken when share limits are reached (qBittorrent 5.2+).
+   * Defaults to `Default`, inheriting the server's configured action.
+   * Older qBittorrent versions ignore this parameter.
+   */
+  shareLimitAction?: ShareLimitAction;
 }
 
 export interface Torrent {
