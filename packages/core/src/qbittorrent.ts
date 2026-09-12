@@ -184,7 +184,8 @@ export class QBittorrent {
 
     const [pair = '', ...attributes] = setCookie.split(';');
     // Preserve the wire value: decoding it would change the Cookie header we send back.
-    const [cookieName, sid] = Object.entries(cookieParse(pair, { decode: (value) => value }))[0] ?? [];
+    const [cookieName, sid] =
+      Object.entries(cookieParse(pair, { decode: (value) => value }))[0] ?? [];
     if (!cookieName || !sid) {
       throw new Error('Invalid cookie');
     }

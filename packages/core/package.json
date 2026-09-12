@@ -23,13 +23,12 @@
       "import": "./dist/index.mjs"
     }
   },
-  "types": "dist/index.d.ts",
+  "types": "dist/index.d.mts",
   "files": [
     "dist"
   ],
   "scripts": {
     "build": "tsdown",
-    "format": "prettier --write src/**/*.ts test/**/*.ts",
     "test": "vitest",
     "test:ci": "vitest --run",
     "typecheck": "tsc --noEmit"

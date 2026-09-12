@@ -101,11 +101,7 @@ describe('launchQBittorrent', () => {
 
     const result = await launchQBittorrent({ args: ['--webui-port=8080'] });
 
-    expect(spawnMock).toHaveBeenCalledWith(
-      'qbittorrent',
-      ['--webui-port=8080'],
-      expect.anything()
-    );
+    expect(spawnMock).toHaveBeenCalledWith('qbittorrent', ['--webui-port=8080'], expect.anything());
     expect(result).toEqual({
       platform: 'linux',
       command: 'qbittorrent',
