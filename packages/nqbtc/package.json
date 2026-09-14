@@ -45,7 +45,7 @@
     "breadc": "1.0.0-beta.18",
     "dotenv": "17.4.2",
     "nqbt": "workspace:*",
-    "zod": "4.6.2"
+    "zod": "4.6.5"
   },
   "engines": {
     "node": ">=v24.0.0"
