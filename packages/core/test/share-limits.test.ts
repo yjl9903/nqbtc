@@ -1,18 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { QBittorrent } from '../src/qbittorrent.js';
-import type { ShareLimitAction } from '../src/types.js';
+import type { ShareLimitAction, ShareLimitsMode } from '../src/types.js';
 
 function createClient() {
   const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(async (_input, init) => {
     const body = init?.body as URLSearchParams;
-    // qBittorrent 5.2 rejects the request if any of these parameters is missing.
+    // The WebUI API rejects the request if any required parameter is missing.
     for (const key of [
       'hashes',
       'ratioLimit',
       'seedingTimeLimit',
       'inactiveSeedingTimeLimit',
-      'shareLimitAction'
+      'shareLimitAction',
+      'shareLimitsMode'
     ]) {
       if (!body.has(key)) {
         return new Response(`Missing required parameter: ${key}`, { status: 400 });
@@ -48,7 +49,8 @@ describe('setTorrentShareLimits', () => {
         ratioLimit: '1.5',
         seedingTimeLimit: '-1',
         inactiveSeedingTimeLimit: '-2',
-        shareLimitAction: 'Default'
+        shareLimitAction: 'Default',
+        shareLimitsMode: 'Default'
       });
     }
   );
@@ -72,9 +74,24 @@ describe('setTorrentShareLimits', () => {
       ratioLimit: '-2',
       seedingTimeLimit: '0',
       inactiveSeedingTimeLimit: '0',
-      shareLimitAction
+      shareLimitAction,
+      shareLimitsMode: 'Default'
     });
   });
+
+  it.each<ShareLimitsMode>(['Default', 'MatchAny', 'MatchAll'])(
+    'sends the explicit %s mode',
+    async (shareLimitsMode) => {
+      const { client, fetch } = createClient();
+      await client.setTorrentShareLimits('abc', {
+        ratioLimit: 2,
+        seedingTimeLimit: 60,
+        shareLimitsMode
+      });
+      const body = fetch.mock.calls[0]![1]?.body as URLSearchParams;
+      expect(body.get('shareLimitsMode')).toBe(shareLimitsMode);
+    }
+  );
 
   it.each([-2, -1, 120])('preserves the explicit inactive limit %s', async (limit) => {
     const { client, fetch } = createClient();

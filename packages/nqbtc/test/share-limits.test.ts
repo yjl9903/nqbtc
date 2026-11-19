@@ -6,9 +6,16 @@ import { setTorrentShareLimitsInputSchema } from '../src/mcp/schema.js';
 import { registerQbittorrentTools } from '../src/mcp/tool.js';
 
 describe('share limit MCP tool', () => {
-  it.each([undefined, 'Default', 'Stop', 'Remove', 'RemoveWithContent', 'EnableSuperSeeding'])(
-    'accepts and forwards shareLimitAction %s',
-    async (shareLimitAction) => {
+  it.each([
+    [undefined, undefined],
+    ['Default', 'Default'],
+    ['Stop', 'MatchAny'],
+    ['Remove', 'MatchAll'],
+    ['RemoveWithContent', undefined],
+    ['EnableSuperSeeding', undefined]
+  ])(
+    'accepts and forwards shareLimitAction %s and shareLimitsMode %s',
+    async (shareLimitAction, shareLimitsMode) => {
       const registerTool = vi.fn();
       const setTorrentShareLimits = vi.fn().mockResolvedValue(true);
       registerQbittorrentTools(
@@ -21,7 +28,8 @@ describe('share limit MCP tool', () => {
         ratioLimit: 2,
         seedingTimeLimit: -1,
         inactiveSeedingTimeLimit: 0,
-        ...(shareLimitAction === undefined ? {} : { shareLimitAction })
+        ...(shareLimitAction === undefined ? {} : { shareLimitAction }),
+        ...(shareLimitsMode === undefined ? {} : { shareLimitsMode })
       });
       const registration = registerTool.mock.calls.find(
         ([name]) => name === 'set_torrent_share_limits'
@@ -34,7 +42,8 @@ describe('share limit MCP tool', () => {
         ratioLimit: 2,
         seedingTimeLimit: -1,
         inactiveSeedingTimeLimit: 0,
-        shareLimitAction
+        shareLimitAction,
+        shareLimitsMode
       });
     }
   );
@@ -46,6 +55,17 @@ describe('share limit MCP tool', () => {
         ratioLimit: -2,
         seedingTimeLimit: -2,
         shareLimitAction
+      }).success
+    ).toBe(false);
+  });
+
+  it.each(['Any', 'matchall', 0])('rejects unsupported mode %s', (shareLimitsMode) => {
+    expect(
+      setTorrentShareLimitsInputSchema.safeParse({
+        hashes: 'all',
+        ratioLimit: -2,
+        seedingTimeLimit: -2,
+        shareLimitsMode
       }).success
     ).toBe(false);
   });

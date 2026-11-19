@@ -486,7 +486,8 @@ export function registerQbittorrentTools(
         ratioLimit: args.ratioLimit,
         seedingTimeLimit: args.seedingTimeLimit,
         inactiveSeedingTimeLimit: args.inactiveSeedingTimeLimit,
-        shareLimitAction: args.shareLimitAction
+        shareLimitAction: args.shareLimitAction,
+        shareLimitsMode: args.shareLimitsMode
       });
     }
   );

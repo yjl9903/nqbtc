@@ -328,6 +328,9 @@ export interface GetTorrentListOptions {
 export type ShareLimitAction =
   'Default' | 'Stop' | 'Remove' | 'RemoveWithContent' | 'EnableSuperSeeding';
 
+/** Whether any or all enabled share limits must be reached (WebUI API 2.15.3+). */
+export type ShareLimitsMode = 'Default' | 'MatchAny' | 'MatchAll';
+
 /**
  * Payload for `POST /api/v2/torrents/setShareLimits`.
  */
@@ -357,6 +360,13 @@ export interface SetTorrentShareLimitsOptions {
    * Older qBittorrent versions ignore this parameter.
    */
   shareLimitAction?: ShareLimitAction;
+
+  /**
+   * How share limits are matched (WebUI API 2.15.3+).
+   * Defaults to `Default`, inheriting the configured mode.
+   * Older qBittorrent versions ignore this parameter.
+   */
+  shareLimitsMode?: ShareLimitsMode;
 }
 
 export interface Torrent {

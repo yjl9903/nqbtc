@@ -330,6 +330,12 @@ export const setTorrentShareLimitsInputSchema = z
       .optional()
       .describe(
         'Action when share limits are reached (qBittorrent 5.2+). Defaults to Default, inheriting the server configuration.'
+      ),
+    shareLimitsMode: z
+      .enum(['Default', 'MatchAny', 'MatchAll'])
+      .optional()
+      .describe(
+        'Whether any or all enabled share limits must be reached (WebUI API 2.15.3+). Defaults to Default, inheriting the configured mode.'
       )
   })
   .describe('Set share limits for one or more torrents.');
