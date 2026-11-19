@@ -1097,7 +1097,9 @@ export class QBittorrent {
       seedingTimeLimit: `${options.seedingTimeLimit}`,
       inactiveSeedingTimeLimit: `${options.inactiveSeedingTimeLimit ?? -2}`,
       // Required by qBittorrent 5.2+, ignored by older servers.
-      shareLimitAction: options.shareLimitAction ?? 'Default'
+      shareLimitAction: options.shareLimitAction ?? 'Default',
+      // Required as of WebUI API 2.15.3, ignored by older servers.
+      shareLimitsMode: options.shareLimitsMode ?? 'Default'
     };
 
     await this.request(
