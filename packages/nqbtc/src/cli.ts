@@ -1,5 +1,4 @@
 import { breadc } from 'breadc';
-import { config } from 'dotenv';
 
 import { QBittorrent } from 'nqbt';
 
@@ -12,7 +11,11 @@ const cli = breadc('nqbtc', { version, description })
   .option('--username <string>', 'qBittorrent WebUI API auth username')
   .option('--password <string>', 'qBittorrent WebUI API auth password')
   .use(async (context, next) => {
-    config({ quiet: true });
+    try {
+      process.loadEnvFile();
+    } catch {
+      // The local .env file is optional. CLI flags and the process environment still apply.
+    }
 
     const baseUrl = context.options.get('base-url');
     const username = context.options.get('username');
